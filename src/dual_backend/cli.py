@@ -31,10 +31,33 @@ def main() -> None:
     train.add_argument("--output-dir", type=Path, default=Path("artifacts"))
     train.add_argument("--report-dir", type=Path, default=Path("reports"))
 
+    parity = subcommands.add_parser("parity", help="Check PyTorch checkpoint conversion into JAX layout")
+    parity.add_argument("--torch-checkpoint", type=Path, default=Path("artifacts/torch_model.pt"))
+    parity.add_argument("--dataset", choices=["diabetes", "csv"], default="diabetes")
+    parity.add_argument("--csv-path", type=Path)
+    parity.add_argument("--target-column")
+    parity.add_argument("--validation-size", type=float, default=0.20)
+    parity.add_argument("--test-size", type=float, default=0.20)
+    parity.add_argument("--seed", type=int, default=42)
+    parity.add_argument("--tolerance", type=float, default=1e-5)
+    parity.add_argument("--output", type=Path, default=Path("reports/parity.json"))
+    parity.add_argument("--device", default="auto")
+
     args = parser.parse_args()
     if args.command == "train":
         summary = run_experiment(_config_from_train_args(args))
         print(json.dumps(_compact_summary(summary), indent=2))
+    elif args.command == "parity":
+        from dual_backend.parity import check_torch_to_jax_layout
+
+        report = check_torch_to_jax_layout(
+            args.torch_checkpoint,
+            _config_from_parity_args(args),
+            args.output,
+            tolerance=args.tolerance,
+            device=args.device,
+        )
+        print(json.dumps(report, indent=2))
 
 
 def _config_from_train_args(args: argparse.Namespace) -> ExperimentConfig:
@@ -60,6 +83,18 @@ def _config_from_train_args(args: argparse.Namespace) -> ExperimentConfig:
             gradient_clip=args.gradient_clip,
             seed=args.seed,
         ),
+    )
+
+
+def _config_from_parity_args(args: argparse.Namespace) -> ExperimentConfig:
+    return ExperimentConfig(
+        backend="torch",
+        dataset=args.dataset,
+        csv_path=args.csv_path,
+        target_column=args.target_column,
+        validation_size=args.validation_size,
+        test_size=args.test_size,
+        training=TrainingConfig(seed=args.seed),
     )
 
 
