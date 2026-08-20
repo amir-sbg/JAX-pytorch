@@ -1,0 +1,79 @@
+from __future__ import annotations
+
+import argparse
+import json
+from pathlib import Path
+
+from dual_backend.config import ExperimentConfig, ModelConfig, TrainingConfig
+from dual_backend.pipeline import run_experiment
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(prog="dual-backend-regression")
+    subcommands = parser.add_subparsers(dest="command", required=True)
+
+    train = subcommands.add_parser("train", help="Train PyTorch, JAX, or both backends")
+    train.add_argument("--backend", choices=["torch", "jax", "both"], default="both")
+    train.add_argument("--dataset", choices=["diabetes", "csv"], default="diabetes")
+    train.add_argument("--csv-path", type=Path)
+    train.add_argument("--target-column")
+    train.add_argument("--validation-size", type=float, default=0.20)
+    train.add_argument("--test-size", type=float, default=0.20)
+    train.add_argument("--hidden-dims", nargs="+", type=int, default=[64, 32])
+    train.add_argument("--activation", choices=["relu", "gelu", "tanh"], default="gelu")
+    train.add_argument("--epochs", type=int, default=100)
+    train.add_argument("--batch-size", type=int, default=32)
+    train.add_argument("--learning-rate", type=float, default=3e-3)
+    train.add_argument("--weight-decay", type=float, default=1e-4)
+    train.add_argument("--patience", type=int, default=20)
+    train.add_argument("--gradient-clip", type=float, default=1.0)
+    train.add_argument("--seed", type=int, default=42)
+    train.add_argument("--output-dir", type=Path, default=Path("artifacts"))
+    train.add_argument("--report-dir", type=Path, default=Path("reports"))
+
+    args = parser.parse_args()
+    if args.command == "train":
+        summary = run_experiment(_config_from_train_args(args))
+        print(json.dumps(_compact_summary(summary), indent=2))
+
+
+def _config_from_train_args(args: argparse.Namespace) -> ExperimentConfig:
+    return ExperimentConfig(
+        backend=args.backend,
+        dataset=args.dataset,
+        csv_path=args.csv_path,
+        target_column=args.target_column,
+        validation_size=args.validation_size,
+        test_size=args.test_size,
+        output_dir=args.output_dir,
+        report_dir=args.report_dir,
+        model=ModelConfig(
+            hidden_dims=tuple(args.hidden_dims),
+            activation=args.activation,
+        ),
+        training=TrainingConfig(
+            epochs=args.epochs,
+            batch_size=args.batch_size,
+            learning_rate=args.learning_rate,
+            weight_decay=args.weight_decay,
+            patience=args.patience,
+            gradient_clip=args.gradient_clip,
+            seed=args.seed,
+        ),
+    )
+
+
+def _compact_summary(summary: dict) -> dict:
+    return {
+        "dataset": summary["dataset"],
+        "metrics": {
+            name: report["metrics"]
+            for name, report in summary["backends"].items()
+        },
+        "comparison": summary["comparison"],
+        "report": "reports/run_summary.json",
+    }
+
+
+if __name__ == "__main__":
+    main()
