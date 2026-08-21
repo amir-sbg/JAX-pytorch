@@ -4,7 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
-from dual_backend.config import ExperimentConfig, ModelConfig, TrainingConfig
+from dual_backend.config import ExperimentConfig, ModelConfig, TrainingConfig, load_experiment_config
 from dual_backend.pipeline import run_experiment
 
 
@@ -43,9 +43,15 @@ def main() -> None:
     parity.add_argument("--output", type=Path, default=Path("reports/parity.json"))
     parity.add_argument("--device", default="auto")
 
+    run_config = subcommands.add_parser("run-config", help="Run an experiment from a JSON config")
+    run_config.add_argument("config_path", type=Path)
+
     args = parser.parse_args()
     if args.command == "train":
         summary = run_experiment(_config_from_train_args(args))
+        print(json.dumps(_compact_summary(summary), indent=2))
+    elif args.command == "run-config":
+        summary = run_experiment(load_experiment_config(args.config_path))
         print(json.dumps(_compact_summary(summary), indent=2))
     elif args.command == "parity":
         from dual_backend.parity import check_torch_to_jax_layout

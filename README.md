@@ -77,6 +77,16 @@ python -m dual_backend.cli train --backend jax
 
 This is useful when checking backend-specific performance or debugging a training issue.
 
+## Run from a saved config
+
+For repeatable experiments, the same settings can be stored in JSON:
+
+```bash
+python -m dual_backend.cli run-config examples/diabetes_both.json
+```
+
+This is the easiest way to keep model width, optimizer settings, split sizes, and output paths fixed across PyTorch/JAX comparisons.
+
 ## Use a custom CSV
 
 The CSV path should contain numeric feature columns and one numeric target column.

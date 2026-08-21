@@ -1,0 +1,21 @@
+{
+  "backend": "both",
+  "dataset": "diabetes",
+  "validation_size": 0.2,
+  "test_size": 0.2,
+  "output_dir": "artifacts",
+  "report_dir": "reports",
+  "model": {
+    "hidden_dims": [64, 32],
+    "activation": "gelu"
+  },
+  "training": {
+    "epochs": 80,
+    "batch_size": 32,
+    "learning_rate": 0.003,
+    "weight_decay": 0.0001,
+    "patience": 20,
+    "gradient_clip": 1.0,
+    "seed": 42
+  }
+}

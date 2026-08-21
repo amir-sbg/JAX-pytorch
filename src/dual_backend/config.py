@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -75,3 +76,42 @@ class ExperimentConfig:
         payload["report_dir"] = str(self.report_dir)
         payload["model"]["hidden_dims"] = list(self.model.hidden_dims)
         return payload
+
+
+def experiment_config_from_dict(payload: dict) -> ExperimentConfig:
+    defaults = ExperimentConfig()
+    model_defaults = ModelConfig()
+    training_defaults = TrainingConfig()
+
+    model_payload = payload.get("model", {})
+    training_payload = payload.get("training", {})
+
+    config = ExperimentConfig(
+        backend=payload.get("backend", defaults.backend),
+        dataset=payload.get("dataset", defaults.dataset),
+        csv_path=Path(payload["csv_path"]) if payload.get("csv_path") else None,
+        target_column=payload.get("target_column", defaults.target_column),
+        validation_size=float(payload.get("validation_size", defaults.validation_size)),
+        test_size=float(payload.get("test_size", defaults.test_size)),
+        output_dir=Path(payload.get("output_dir", defaults.output_dir)),
+        report_dir=Path(payload.get("report_dir", defaults.report_dir)),
+        model=ModelConfig(
+            hidden_dims=tuple(model_payload.get("hidden_dims", model_defaults.hidden_dims)),
+            activation=model_payload.get("activation", model_defaults.activation),
+        ),
+        training=TrainingConfig(
+            epochs=int(training_payload.get("epochs", training_defaults.epochs)),
+            batch_size=int(training_payload.get("batch_size", training_defaults.batch_size)),
+            learning_rate=float(training_payload.get("learning_rate", training_defaults.learning_rate)),
+            weight_decay=float(training_payload.get("weight_decay", training_defaults.weight_decay)),
+            patience=int(training_payload.get("patience", training_defaults.patience)),
+            gradient_clip=float(training_payload.get("gradient_clip", training_defaults.gradient_clip)),
+            seed=int(training_payload.get("seed", training_defaults.seed)),
+        ),
+    )
+    config.validate()
+    return config
+
+
+def load_experiment_config(path: Path) -> ExperimentConfig:
+    return experiment_config_from_dict(json.loads(path.read_text(encoding="utf-8")))
