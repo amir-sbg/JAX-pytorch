@@ -106,7 +106,7 @@ def _compact_summary(summary: dict) -> dict:
             for name, report in summary["backends"].items()
         },
         "comparison": summary["comparison"],
-        "report": "reports/run_summary.json",
+        "report": summary["report_path"],
     }
 
 

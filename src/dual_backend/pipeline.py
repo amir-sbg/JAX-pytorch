@@ -13,6 +13,8 @@ def run_experiment(config: ExperimentConfig) -> dict:
     config.validate()
     config.output_dir.mkdir(parents=True, exist_ok=True)
     config.report_dir.mkdir(parents=True, exist_ok=True)
+    summary_path = config.report_dir / "run_summary.json"
+    predictions_path = config.report_dir / "predictions.csv"
 
     dataset = load_tabular_dataset(
         dataset=config.dataset,
@@ -56,9 +58,11 @@ def run_experiment(config: ExperimentConfig) -> dict:
         "dataset": _dataset_summary(dataset),
         "backends": backend_reports,
         "comparison": comparison,
+        "report_path": str(summary_path),
+        "predictions_path": str(predictions_path),
     }
-    save_json(summary, config.report_dir / "run_summary.json")
-    _write_predictions(dataset, results, config.report_dir / "predictions.csv")
+    save_json(summary, summary_path)
+    _write_predictions(dataset, results, predictions_path)
     return summary
 
 
