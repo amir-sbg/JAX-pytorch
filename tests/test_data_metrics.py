@@ -3,6 +3,7 @@ import pytest
 
 from dual_backend.data import fit_standardizer, inverse_targets, make_numpy_batches
 from dual_backend.metrics import (
+    learning_curve_summary,
     metric_delta,
     prediction_agreement_summary,
     regression_metrics,
@@ -67,3 +68,23 @@ def test_prediction_agreement_summarizes_backend_differences() -> None:
     assert -1.0 <= report["prediction_correlation"] <= 1.0
     assert report["residual_sign_disagreement_rate"] == pytest.approx(2 / 3)
     assert report["first_backend_lower_error_rate"] > 0
+
+
+def test_learning_curve_summary_tracks_best_epoch_and_gap() -> None:
+    history = [
+        {"epoch": 1.0, "train_loss": 0.8, "validation_loss": 0.9},
+        {"epoch": 2.0, "train_loss": 0.5, "validation_loss": 0.55},
+        {"epoch": 3.0, "train_loss": 0.4, "validation_loss": 0.62},
+    ]
+
+    summary = learning_curve_summary(history)
+
+    assert summary["epochs_ran"] == 3
+    assert summary["best_epoch"] == 2
+    assert summary["validation_loss_improvement"] == pytest.approx(0.35)
+    assert summary["final_generalization_gap"] == pytest.approx(0.22)
+
+
+def test_learning_curve_summary_rejects_missing_columns() -> None:
+    with pytest.raises(ValueError, match="train_loss"):
+        learning_curve_summary([{"epoch": 1.0, "validation_loss": 0.2}])

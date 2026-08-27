@@ -68,6 +68,44 @@ def prediction_agreement_summary(
     }
 
 
+def learning_curve_summary(history: list[dict[str, float]]) -> dict[str, float | int]:
+    if not history:
+        return {
+            "epochs_ran": 0,
+            "best_epoch": 0,
+            "initial_train_loss": 0.0,
+            "final_train_loss": 0.0,
+            "initial_validation_loss": 0.0,
+            "final_validation_loss": 0.0,
+            "best_validation_loss": 0.0,
+            "validation_loss_improvement": 0.0,
+            "final_generalization_gap": 0.0,
+        }
+    for row in history:
+        if "train_loss" not in row or "validation_loss" not in row:
+            raise ValueError("history rows must include train_loss and validation_loss")
+
+    first = history[0]
+    last = history[-1]
+    best_index, best = min(
+        enumerate(history),
+        key=lambda item: float(item[1]["validation_loss"]),
+    )
+    return {
+        "epochs_ran": len(history),
+        "best_epoch": int(best.get("epoch", best_index + 1)),
+        "initial_train_loss": float(first["train_loss"]),
+        "final_train_loss": float(last["train_loss"]),
+        "initial_validation_loss": float(first["validation_loss"]),
+        "final_validation_loss": float(last["validation_loss"]),
+        "best_validation_loss": float(best["validation_loss"]),
+        "validation_loss_improvement": float(
+            first["validation_loss"] - best["validation_loss"]
+        ),
+        "final_generalization_gap": float(last["validation_loss"] - last["train_loss"]),
+    }
+
+
 def save_json(payload: dict, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, allow_nan=False) + "\n", encoding="utf-8")

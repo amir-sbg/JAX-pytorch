@@ -6,6 +6,7 @@ from pathlib import Path
 from dual_backend.config import ExperimentConfig
 from dual_backend.data import TabularDataset, inverse_targets, load_tabular_dataset
 from dual_backend.metrics import (
+    learning_curve_summary,
     metric_delta,
     prediction_agreement_summary,
     regression_metrics,
@@ -99,6 +100,7 @@ def _result_report(
         "train_seconds": result.train_seconds,
         "checkpoint_path": str(result.checkpoint_path),
         "history_path": str(history_path),
+        "learning_curve": learning_curve_summary(result.history),
         "extra": result.extra,
     }
 
