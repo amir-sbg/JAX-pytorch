@@ -40,9 +40,47 @@ def metric_delta(first: dict[str, float], second: dict[str, float]) -> dict[str,
     return {key: float(second[key] - first[key]) for key in keys}
 
 
+def prediction_agreement_summary(
+    targets: np.ndarray,
+    first_predictions: np.ndarray,
+    second_predictions: np.ndarray,
+) -> dict[str, float]:
+    actual, first = _matching_arrays(targets, first_predictions)
+    _, second = _matching_arrays(targets, second_predictions)
+    if first.shape != second.shape:
+        raise ValueError("prediction arrays must have the same shape")
+
+    first_residuals = first - actual
+    second_residuals = second - actual
+    abs_gap = np.abs(second - first)
+    first_abs_error = np.abs(first_residuals)
+    second_abs_error = np.abs(second_residuals)
+    return {
+        "mean_abs_prediction_gap": float(np.mean(abs_gap)),
+        "max_abs_prediction_gap": float(np.max(abs_gap)),
+        "prediction_correlation": _safe_correlation(first, second),
+        "residual_correlation": _safe_correlation(first_residuals, second_residuals),
+        "residual_sign_disagreement_rate": float(
+            np.mean(np.sign(first_residuals) != np.sign(second_residuals))
+        ),
+        "first_backend_lower_error_rate": float(np.mean(first_abs_error < second_abs_error)),
+        "second_backend_lower_error_rate": float(np.mean(second_abs_error < first_abs_error)),
+    }
+
+
 def save_json(payload: dict, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, allow_nan=False) + "\n", encoding="utf-8")
+
+
+def _safe_correlation(first: np.ndarray, second: np.ndarray) -> float:
+    if first.size < 2:
+        return 1.0 if np.allclose(first, second) else 0.0
+    first_std = float(np.std(first))
+    second_std = float(np.std(second))
+    if first_std < 1e-12 or second_std < 1e-12:
+        return 1.0 if np.allclose(first, second) else 0.0
+    return float(np.corrcoef(first, second)[0, 1])
 
 
 def _matching_arrays(targets: np.ndarray, predictions: np.ndarray) -> tuple[np.ndarray, np.ndarray]:

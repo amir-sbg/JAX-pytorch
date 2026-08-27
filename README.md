@@ -10,6 +10,7 @@ The default experiment uses the scikit-learn diabetes regression dataset because
 - PyTorch backend: `nn.Sequential` MLP, AdamW, gradient clipping, early stopping, checkpointing
 - JAX backend: explicit parameter PyTrees, JIT-compiled training step, hand-written Adam update, checkpointing to `.npz`
 - Backend comparison: consistent test metrics, residual summaries, prediction CSVs, training-history CSVs
+- Cross-backend agreement diagnostics for prediction gaps, correlations, and residual sign disagreements
 - PyTorch → JAX layout check: converts a PyTorch checkpoint into the JAX parameter layout and verifies numerical parity
 - CLI workflow for running experiments and writing reproducible reports
 
@@ -66,7 +67,7 @@ reports/
   jax_history.csv
 ```
 
-`run_summary.json` contains metrics for each backend plus the JAX-minus-PyTorch metric deltas.
+`run_summary.json` contains metrics for each backend plus the JAX-minus-PyTorch metric deltas and prediction-agreement diagnostics in the original target scale.
 
 ## Run only one backend
 

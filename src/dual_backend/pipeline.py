@@ -5,7 +5,13 @@ from pathlib import Path
 
 from dual_backend.config import ExperimentConfig
 from dual_backend.data import TabularDataset, inverse_targets, load_tabular_dataset
-from dual_backend.metrics import metric_delta, regression_metrics, residual_summary, save_json
+from dual_backend.metrics import (
+    metric_delta,
+    prediction_agreement_summary,
+    regression_metrics,
+    residual_summary,
+    save_json,
+)
 from dual_backend.results import BackendResult
 
 
@@ -52,7 +58,15 @@ def run_experiment(config: ExperimentConfig) -> dict:
         result.backend: _result_report(dataset, result, config.report_dir)
         for result in results
     }
-    comparison = _comparison_report(backend_reports)
+    predictions_by_backend = {
+        result.backend: inverse_targets(dataset, result.predictions_scaled)
+        for result in results
+    }
+    comparison = _comparison_report(
+        dataset,
+        backend_reports,
+        predictions_by_backend,
+    )
     summary = {
         "config": config.to_dict(),
         "dataset": _dataset_summary(dataset),
@@ -89,9 +103,14 @@ def _result_report(
     }
 
 
-def _comparison_report(reports: dict[str, dict]) -> dict:
+def _comparison_report(
+    dataset: TabularDataset,
+    reports: dict[str, dict],
+    predictions_by_backend: dict[str, object],
+) -> dict:
     if "torch" not in reports or "jax" not in reports:
         return {}
+    actual = inverse_targets(dataset, dataset.y_test)
     return {
         "metric_delta_jax_minus_torch": metric_delta(
             reports["torch"]["metrics"],
@@ -99,6 +118,11 @@ def _comparison_report(reports: dict[str, dict]) -> dict:
         ),
         "train_seconds_delta_jax_minus_torch": float(
             reports["jax"]["train_seconds"] - reports["torch"]["train_seconds"]
+        ),
+        "prediction_agreement": prediction_agreement_summary(
+            actual,
+            predictions_by_backend["torch"],
+            predictions_by_backend["jax"],
         ),
     }
 

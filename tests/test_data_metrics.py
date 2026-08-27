@@ -2,7 +2,12 @@ import numpy as np
 import pytest
 
 from dual_backend.data import fit_standardizer, inverse_targets, make_numpy_batches
-from dual_backend.metrics import metric_delta, regression_metrics, residual_summary
+from dual_backend.metrics import (
+    metric_delta,
+    prediction_agreement_summary,
+    regression_metrics,
+    residual_summary,
+)
 
 
 def test_standardizer_round_trip() -> None:
@@ -49,3 +54,16 @@ def test_metrics_reject_nan_values() -> None:
 
 def test_metric_delta_uses_second_minus_first() -> None:
     assert metric_delta({"rmse": 2.0}, {"rmse": 1.5}) == {"rmse": -0.5}
+
+
+def test_prediction_agreement_summarizes_backend_differences() -> None:
+    targets = np.array([1.0, 2.0, 3.0])
+    torch_predictions = np.array([1.2, 1.8, 2.9])
+    jax_predictions = np.array([1.1, 2.2, 3.4])
+
+    report = prediction_agreement_summary(targets, torch_predictions, jax_predictions)
+
+    assert report["mean_abs_prediction_gap"] == pytest.approx((0.1 + 0.4 + 0.5) / 3)
+    assert -1.0 <= report["prediction_correlation"] <= 1.0
+    assert report["residual_sign_disagreement_rate"] == pytest.approx(2 / 3)
+    assert report["first_backend_lower_error_rate"] > 0
