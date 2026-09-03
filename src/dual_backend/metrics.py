@@ -35,6 +35,41 @@ def residual_summary(targets: np.ndarray, predictions: np.ndarray) -> dict[str, 
     }
 
 
+def error_by_target_quantile(
+    targets: np.ndarray,
+    predictions: np.ndarray,
+    bins: int = 4,
+) -> list[dict[str, float | int]]:
+    actual, estimated = _matching_arrays(targets, predictions)
+    if bins < 2:
+        raise ValueError("bins must be at least 2")
+
+    quantiles = np.linspace(0.0, 1.0, bins + 1)
+    edges = np.quantile(actual, quantiles)
+    rows: list[dict[str, float | int]] = []
+    for index in range(bins):
+        lower = edges[index]
+        upper = edges[index + 1]
+        if index == bins - 1:
+            mask = (actual >= lower) & (actual <= upper)
+        else:
+            mask = (actual >= lower) & (actual < upper)
+        if not np.any(mask):
+            continue
+        residuals = estimated[mask] - actual[mask]
+        rows.append(
+            {
+                "bin": index + 1,
+                "rows": int(np.sum(mask)),
+                "target_min": float(np.min(actual[mask])),
+                "target_max": float(np.max(actual[mask])),
+                "mae": float(np.mean(np.abs(residuals))),
+                "mean_error": float(np.mean(residuals)),
+            }
+        )
+    return rows
+
+
 def metric_delta(first: dict[str, float], second: dict[str, float]) -> dict[str, float]:
     keys = sorted(set(first) & set(second))
     return {key: float(second[key] - first[key]) for key in keys}

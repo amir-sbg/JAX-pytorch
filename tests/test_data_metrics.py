@@ -3,6 +3,7 @@ import pytest
 
 from dual_backend.data import fit_standardizer, inverse_targets, make_numpy_batches
 from dual_backend.metrics import (
+    error_by_target_quantile,
     learning_curve_summary,
     metric_delta,
     prediction_agreement_summary,
@@ -46,6 +47,22 @@ def test_regression_metrics_and_residuals() -> None:
     assert metrics["mae"] == pytest.approx(0.5)
     assert metrics["rmse"] == pytest.approx(np.sqrt((0.0 + 0.25 + 1.0) / 3.0))
     assert residuals["max_abs"] == 1.0
+
+
+def test_error_by_target_quantile_tracks_bias_by_range() -> None:
+    targets = np.array([0.0, 1.0, 2.0, 3.0])
+    predictions = np.array([0.0, 1.5, 1.5, 5.0])
+
+    rows = error_by_target_quantile(targets, predictions, bins=2)
+
+    assert [row["rows"] for row in rows] == [2, 2]
+    assert rows[0]["mae"] == pytest.approx(0.25)
+    assert rows[1]["mean_error"] == pytest.approx(0.75)
+
+
+def test_error_by_target_quantile_rejects_single_bin() -> None:
+    with pytest.raises(ValueError, match="bins"):
+        error_by_target_quantile(np.array([1.0, 2.0]), np.array([1.0, 2.0]), bins=1)
 
 
 def test_metrics_reject_nan_values() -> None:
