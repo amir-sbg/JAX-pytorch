@@ -6,6 +6,26 @@ from pathlib import Path
 import numpy as np
 
 
+def mlp_capacity_summary(input_dim: int, hidden_dims: tuple[int, ...]) -> dict[str, int]:
+    if input_dim < 1:
+        raise ValueError("input_dim must be positive")
+    if not hidden_dims or any(width < 1 for width in hidden_dims):
+        raise ValueError("hidden_dims must contain positive widths")
+
+    layer_sizes = (input_dim, *hidden_dims, 1)
+    linear_parameters = 0
+    multiply_adds = 0
+    for in_features, out_features in zip(layer_sizes[:-1], layer_sizes[1:]):
+        linear_parameters += in_features * out_features + out_features
+        multiply_adds += in_features * out_features
+    return {
+        "input_dim": input_dim,
+        "hidden_layers": len(hidden_dims),
+        "trainable_parameters": linear_parameters,
+        "linear_multiply_adds_per_sample": multiply_adds,
+    }
+
+
 def regression_metrics(targets: np.ndarray, predictions: np.ndarray) -> dict[str, float]:
     actual, estimated = _matching_arrays(targets, predictions)
     residuals = estimated - actual

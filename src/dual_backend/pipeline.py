@@ -9,6 +9,7 @@ from dual_backend.metrics import (
     error_by_target_quantile,
     learning_curve_summary,
     metric_delta,
+    mlp_capacity_summary,
     prediction_agreement_summary,
     regression_metrics,
     residual_summary,
@@ -72,6 +73,10 @@ def run_experiment(config: ExperimentConfig) -> dict:
     summary = {
         "config": config.to_dict(),
         "dataset": _dataset_summary(dataset),
+        "model_capacity": mlp_capacity_summary(
+            dataset.input_dim,
+            config.model.hidden_dims,
+        ),
         "backends": backend_reports,
         "comparison": comparison,
         "report_path": str(summary_path),

@@ -6,6 +6,7 @@ from dual_backend.metrics import (
     error_by_target_quantile,
     learning_curve_summary,
     metric_delta,
+    mlp_capacity_summary,
     prediction_agreement_summary,
     regression_metrics,
     residual_summary,
@@ -19,6 +20,14 @@ def test_standardizer_round_trip() -> None:
     restored = standardizer.inverse(standardizer.transform(values))
 
     np.testing.assert_allclose(restored, values, atol=1e-6)
+
+
+def test_mlp_capacity_summary_counts_parameters_and_ops() -> None:
+    summary = mlp_capacity_summary(input_dim=4, hidden_dims=(8, 2))
+
+    assert summary["hidden_layers"] == 2
+    assert summary["trainable_parameters"] == 4 * 8 + 8 + 8 * 2 + 2 + 2 * 1 + 1
+    assert summary["linear_multiply_adds_per_sample"] == 4 * 8 + 8 * 2 + 2 * 1
 
 
 def test_make_numpy_batches_covers_all_rows() -> None:
