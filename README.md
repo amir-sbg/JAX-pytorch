@@ -14,6 +14,7 @@ The default experiment uses the scikit-learn diabetes regression dataset because
 - Target-range error slices to check whether low/high targets behave differently
 - Cross-backend agreement diagnostics for prediction gaps, correlations, and residual sign disagreements
 - Learning-curve summaries for convergence, best epoch, and final generalization gap
+- Training diagnostics for validation rebound and possible overfitting
 - PyTorch → JAX layout check: converts a PyTorch checkpoint into the JAX parameter layout and verifies numerical parity
 - CLI workflow for running experiments and writing reproducible reports
 

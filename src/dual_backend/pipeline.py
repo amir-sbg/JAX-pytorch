@@ -14,6 +14,7 @@ from dual_backend.metrics import (
     regression_metrics,
     residual_summary,
     save_json,
+    training_diagnostics,
 )
 from dual_backend.results import BackendResult
 
@@ -108,6 +109,7 @@ def _result_report(
         "checkpoint_path": str(result.checkpoint_path),
         "history_path": str(history_path),
         "learning_curve": learning_curve_summary(result.history),
+        "training_diagnostics": training_diagnostics(result.history),
         "extra": result.extra,
     }
 

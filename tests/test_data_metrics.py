@@ -10,6 +10,7 @@ from dual_backend.metrics import (
     prediction_agreement_summary,
     regression_metrics,
     residual_summary,
+    training_diagnostics,
 )
 
 
@@ -114,3 +115,19 @@ def test_learning_curve_summary_tracks_best_epoch_and_gap() -> None:
 def test_learning_curve_summary_rejects_missing_columns() -> None:
     with pytest.raises(ValueError, match="train_loss"):
         learning_curve_summary([{"epoch": 1.0, "validation_loss": 0.2}])
+
+
+def test_training_diagnostics_flags_validation_rebound() -> None:
+    history = [
+        {"epoch": 1.0, "train_loss": 1.0, "validation_loss": 1.2},
+        {"epoch": 2.0, "train_loss": 0.7, "validation_loss": 0.8},
+        {"epoch": 3.0, "train_loss": 0.5, "validation_loss": 1.0},
+    ]
+
+    diagnostics = training_diagnostics(history)
+
+    assert diagnostics["epochs_after_best"] == 1
+    assert diagnostics["best_epoch_is_final"] is False
+    assert diagnostics["validation_rebound"] == pytest.approx(0.2)
+    assert diagnostics["train_loss_drop_fraction"] == pytest.approx(0.5)
+    assert diagnostics["overfit_flag"] is True

@@ -161,6 +161,51 @@ def learning_curve_summary(history: list[dict[str, float]]) -> dict[str, float |
     }
 
 
+def training_diagnostics(
+    history: list[dict[str, float]],
+    overfit_tolerance: float = 0.10,
+) -> dict[str, float | int | bool]:
+    if overfit_tolerance < 0:
+        raise ValueError("overfit_tolerance must not be negative")
+    if not history:
+        return {
+            "epochs_after_best": 0,
+            "best_epoch_is_final": False,
+            "validation_rebound": 0.0,
+            "relative_validation_rebound": 0.0,
+            "train_loss_drop_fraction": 0.0,
+            "overfit_flag": False,
+        }
+    for row in history:
+        if "train_loss" not in row or "validation_loss" not in row:
+            raise ValueError("history rows must include train_loss and validation_loss")
+
+    best_index, best = min(
+        enumerate(history),
+        key=lambda item: float(item[1]["validation_loss"]),
+    )
+    first = history[0]
+    last = history[-1]
+    best_validation = float(best["validation_loss"])
+    final_validation = float(last["validation_loss"])
+    validation_rebound = final_validation - best_validation
+    initial_train = float(first["train_loss"])
+    final_train = float(last["train_loss"])
+    train_drop = initial_train - final_train
+    relative_rebound = validation_rebound / max(abs(best_validation), 1e-12)
+    return {
+        "epochs_after_best": len(history) - best_index - 1,
+        "best_epoch_is_final": best_index == len(history) - 1,
+        "validation_rebound": validation_rebound,
+        "relative_validation_rebound": relative_rebound,
+        "train_loss_drop_fraction": train_drop / max(abs(initial_train), 1e-12),
+        "overfit_flag": bool(
+            relative_rebound > overfit_tolerance
+            and final_train <= float(best["train_loss"])
+        ),
+    }
+
+
 def save_json(payload: dict, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, allow_nan=False) + "\n", encoding="utf-8")
