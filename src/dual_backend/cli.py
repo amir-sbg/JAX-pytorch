@@ -115,6 +115,7 @@ def _compact_summary(summary: dict) -> dict:
             name: report["metrics"]
             for name, report in summary["backends"].items()
         },
+        "selection": summary.get("selection", {}),
         "comparison": summary["comparison"],
         "report": summary["report_path"],
     }

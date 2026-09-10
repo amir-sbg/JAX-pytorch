@@ -81,6 +81,7 @@ def run_experiment(config: ExperimentConfig) -> dict:
         ),
         "backends": backend_reports,
         "comparison": comparison,
+        "selection": _selection_summary(backend_reports),
         "report_path": str(summary_path),
         "predictions_path": str(predictions_path),
     }
@@ -140,6 +141,20 @@ def _comparison_report(
             predictions_by_backend["torch"],
             predictions_by_backend["jax"],
         ),
+    }
+
+
+def _selection_summary(reports: dict[str, dict]) -> dict[str, str | float]:
+    if not reports:
+        return {}
+    metric = "rmse"
+    best_backend, best_report = min(
+        reports.items(),
+        key=lambda item: float(item[1]["metrics"][metric]),
+    )
+    return {
+        "best_backend_by_rmse": best_backend,
+        "best_rmse": float(best_report["metrics"][metric]),
     }
 
 

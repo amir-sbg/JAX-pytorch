@@ -7,12 +7,13 @@ The default experiment uses the scikit-learn diabetes regression dataset because
 ## What is implemented
 
 - Shared preprocessing: train/validation/test split, feature scaling, target scaling, batch construction
-- PyTorch backend: `nn.Sequential` MLP, AdamW, gradient clipping, early stopping, checkpointing
-- JAX backend: explicit parameter PyTrees, JIT-compiled training step, hand-written Adam update, checkpointing to `.npz`
+- PyTorch backend: `nn.Sequential` MLP, AdamW, MSE/Huber loss, gradient clipping, early stopping, checkpointing
+- JAX backend: explicit parameter PyTrees, JIT-compiled training step, hand-written Adam/Huber math, checkpointing to `.npz`
 - Model-capacity accounting for trainable parameters and approximate per-sample linear ops
 - Backend comparison: consistent test metrics, residual summaries, prediction CSVs, training-history CSVs
-- Target-range error slices to check whether low/high targets behave differently
+- Target-range and prediction-range error slices to check whether low/high targets or forecasts behave differently
 - Cross-backend agreement diagnostics for prediction gaps, correlations, and residual sign disagreements
+- Backend-selection summary using test RMSE
 - Learning-curve summaries for convergence, best epoch, and final generalization gap
 - Training diagnostics for validation rebound and possible overfitting
 - PyTorch → JAX layout check: converts a PyTorch checkpoint into the JAX parameter layout and verifies numerical parity
@@ -54,7 +55,9 @@ python -m dual_backend.cli train \
   --backend both \
   --epochs 100 \
   --batch-size 32 \
-  --learning-rate 0.003
+  --learning-rate 0.003 \
+  --loss huber \
+  --huber-delta 1.0
 ```
 
 Outputs are written to:
@@ -71,7 +74,7 @@ reports/
   jax_history.csv
 ```
 
-`run_summary.json` contains metrics for each backend, learning-curve summaries, target-quantile error slices, JAX-minus-PyTorch metric deltas, and prediction-agreement diagnostics in the original target scale.
+`run_summary.json` contains metrics for each backend, learning-curve summaries, target- and prediction-quantile error slices, backend selection by RMSE, JAX-minus-PyTorch metric deltas, and prediction-agreement diagnostics in the original target scale.
 
 ## Run only one backend
 
