@@ -90,6 +90,41 @@ def error_by_target_quantile(
     return rows
 
 
+def error_by_prediction_quantile(
+    targets: np.ndarray,
+    predictions: np.ndarray,
+    bins: int = 4,
+) -> list[dict[str, float | int]]:
+    actual, estimated = _matching_arrays(targets, predictions)
+    if bins < 2:
+        raise ValueError("bins must be at least 2")
+
+    quantiles = np.linspace(0.0, 1.0, bins + 1)
+    edges = np.quantile(estimated, quantiles)
+    rows: list[dict[str, float | int]] = []
+    for index in range(bins):
+        lower = edges[index]
+        upper = edges[index + 1]
+        if index == bins - 1:
+            mask = (estimated >= lower) & (estimated <= upper)
+        else:
+            mask = (estimated >= lower) & (estimated < upper)
+        if not np.any(mask):
+            continue
+        residuals = estimated[mask] - actual[mask]
+        rows.append(
+            {
+                "bin": index + 1,
+                "rows": int(np.sum(mask)),
+                "prediction_min": float(np.min(estimated[mask])),
+                "prediction_max": float(np.max(estimated[mask])),
+                "mae": float(np.mean(np.abs(residuals))),
+                "mean_error": float(np.mean(residuals)),
+            }
+        )
+    return rows
+
+
 def metric_delta(first: dict[str, float], second: dict[str, float]) -> dict[str, float]:
     keys = sorted(set(first) & set(second))
     return {key: float(second[key] - first[key]) for key in keys}

@@ -7,6 +7,7 @@ from dual_backend.config import ExperimentConfig
 from dual_backend.data import TabularDataset, inverse_targets, load_tabular_dataset
 from dual_backend.metrics import (
     error_by_target_quantile,
+    error_by_prediction_quantile,
     learning_curve_summary,
     metric_delta,
     mlp_capacity_summary,
@@ -103,6 +104,10 @@ def _result_report(
         "metrics": metrics,
         "residuals": residuals,
         "target_quantile_errors": error_by_target_quantile(actual, predictions),
+        "prediction_quantile_errors": error_by_prediction_quantile(
+            actual,
+            predictions,
+        ),
         "best_epoch": result.best_epoch,
         "best_validation_loss_scaled": result.best_validation_loss,
         "train_seconds": result.train_seconds,
