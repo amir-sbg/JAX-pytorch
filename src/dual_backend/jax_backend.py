@@ -92,12 +92,21 @@ def train_jax(
                 training_config.weight_decay,
                 training_config.gradient_clip,
                 model_config.activation,
+                training_config.loss,
+                training_config.huber_delta,
             )
             batch_losses.append(float(loss))
             grad_norms.append(float(grad_norm))
 
         validation_loss = float(
-            _mse_loss(params, x_validation, y_validation, model_config.activation)
+            _regression_loss(
+                params,
+                x_validation,
+                y_validation,
+                model_config.activation,
+                training_config.loss,
+                training_config.huber_delta,
+            )
         )
         history.append(
             {
@@ -131,7 +140,12 @@ def train_jax(
         best_validation_loss=float(best_validation_loss),
         train_seconds=float(train_seconds),
         checkpoint_path=checkpoint_path,
-        extra={"backend": jax.default_backend(), "epochs_ran": len(history)},
+        extra={
+            "backend": jax.default_backend(),
+            "epochs_ran": len(history),
+            "loss": training_config.loss,
+            "huber_delta": training_config.huber_delta,
+        },
     )
 
 
@@ -177,19 +191,44 @@ def load_jax_params(path: Path):
     return tuple(params)
 
 
-def _mse_loss(params, features, targets, activation: str):
+def _regression_loss(
+    params,
+    features,
+    targets,
+    activation: str,
+    loss: str = "mse",
+    huber_delta: float = 1.0,
+):
     import jax.numpy as jnp
 
     predictions = apply_jax(params, features, activation)
     residuals = predictions - targets
-    return jnp.mean(residuals**2)
+    if loss == "mse":
+        return jnp.mean(residuals**2)
+    if loss == "huber":
+        absolute = jnp.abs(residuals)
+        quadratic = jnp.minimum(absolute, huber_delta)
+        linear = absolute - quadratic
+        return jnp.mean(0.5 * quadratic**2 + huber_delta * linear)
+    raise ValueError("loss must be mse or huber")
 
 
-def _loss_with_decay(params, features, targets, activation: str, weight_decay: float):
+def _loss_with_decay(
+    params,
+    features,
+    targets,
+    activation: str,
+    weight_decay: float,
+    loss: str,
+    huber_delta: float,
+):
     import jax.numpy as jnp
 
     penalty = sum(jnp.sum(layer["weight"] ** 2) for layer in params)
-    return _mse_loss(params, features, targets, activation) + weight_decay * penalty
+    return (
+        _regression_loss(params, features, targets, activation, loss, huber_delta)
+        + weight_decay * penalty
+    )
 
 
 def _init_adam_state(params):
@@ -251,6 +290,8 @@ def _train_step_impl(
     weight_decay: float,
     gradient_clip: float,
     activation: str,
+    loss_name: str,
+    huber_delta: float,
 ):
     import jax
 
@@ -260,6 +301,8 @@ def _train_step_impl(
         targets,
         activation,
         weight_decay,
+        loss_name,
+        huber_delta,
     )
     grads, grad_norm = _clip_gradients(grads, gradient_clip)
     params, optimizer_state = _adamw_update(params, grads, optimizer_state, learning_rate)
@@ -274,5 +317,8 @@ def _train_step(*args):
     if _TRAIN_STEP is None:
         import jax
 
-        _TRAIN_STEP = jax.jit(_train_step_impl, static_argnames=("activation",))
+        _TRAIN_STEP = jax.jit(
+            _train_step_impl,
+            static_argnames=("activation", "loss_name"),
+        )
     return _TRAIN_STEP(*args)

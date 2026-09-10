@@ -35,6 +35,10 @@ def test_training_config_rejects_bad_optimizer_values() -> None:
         TrainingConfig(learning_rate=0).validate()
     with pytest.raises(ValueError, match="gradient_clip"):
         TrainingConfig(gradient_clip=0).validate()
+    with pytest.raises(ValueError, match="loss"):
+        TrainingConfig(loss="pinball").validate()
+    with pytest.raises(ValueError, match="huber_delta"):
+        TrainingConfig(loss="huber", huber_delta=0).validate()
 
 
 def test_model_config_rejects_unknown_activation() -> None:
@@ -47,7 +51,7 @@ def test_experiment_config_from_dict_builds_nested_config() -> None:
         {
             "backend": "jax",
             "model": {"hidden_dims": [32, 16], "activation": "relu"},
-            "training": {"epochs": 5, "learning_rate": 0.001},
+            "training": {"epochs": 5, "learning_rate": 0.001, "loss": "huber"},
             "report_dir": "tmp_reports",
         }
     )
@@ -57,6 +61,7 @@ def test_experiment_config_from_dict_builds_nested_config() -> None:
     assert config.model.activation == "relu"
     assert config.training.epochs == 5
     assert config.training.learning_rate == pytest.approx(0.001)
+    assert config.training.loss == "huber"
     assert config.report_dir == Path("tmp_reports")
 
 

@@ -25,6 +25,8 @@ def main() -> None:
     train.add_argument("--batch-size", type=int, default=32)
     train.add_argument("--learning-rate", type=float, default=3e-3)
     train.add_argument("--weight-decay", type=float, default=1e-4)
+    train.add_argument("--loss", choices=["mse", "huber"], default="mse")
+    train.add_argument("--huber-delta", type=float, default=1.0)
     train.add_argument("--patience", type=int, default=20)
     train.add_argument("--gradient-clip", type=float, default=1.0)
     train.add_argument("--seed", type=int, default=42)
@@ -85,6 +87,8 @@ def _config_from_train_args(args: argparse.Namespace) -> ExperimentConfig:
             batch_size=args.batch_size,
             learning_rate=args.learning_rate,
             weight_decay=args.weight_decay,
+            loss=args.loss,
+            huber_delta=args.huber_delta,
             patience=args.patience,
             gradient_clip=args.gradient_clip,
             seed=args.seed,

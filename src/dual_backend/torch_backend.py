@@ -55,7 +55,7 @@ def train_torch(
         lr=training_config.learning_rate,
         weight_decay=training_config.weight_decay,
     )
-    loss_fn = nn.MSELoss()
+    loss_fn = _loss_function(nn, training_config)
     train_loader = _make_loader(dataset, training_config, torch)
     x_validation = torch.as_tensor(dataset.x_validation, dtype=torch.float32, device=resolved_device)
     y_validation = torch.as_tensor(dataset.y_validation, dtype=torch.float32, device=resolved_device)
@@ -118,6 +118,10 @@ def train_torch(
             },
             "best_epoch": best_epoch,
             "best_validation_loss": best_validation_loss,
+            "training": {
+                "loss": training_config.loss,
+                "huber_delta": training_config.huber_delta,
+            },
         },
         checkpoint_path,
     )
@@ -180,6 +184,14 @@ def _torch_loss(model, features, targets, loss_fn) -> float:
     with torch.inference_mode():
         predictions = model(features).squeeze(-1)
         return float(loss_fn(predictions, targets))
+
+
+def _loss_function(nn, config: TrainingConfig):
+    if config.loss == "mse":
+        return nn.MSELoss()
+    if config.loss == "huber":
+        return nn.HuberLoss(delta=config.huber_delta)
+    raise ValueError("loss must be mse or huber")
 
 
 def _resolve_device(device: str):
