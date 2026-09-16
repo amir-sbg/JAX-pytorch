@@ -213,24 +213,6 @@ def _regression_loss(
     raise ValueError("loss must be mse or huber")
 
 
-def _loss_with_decay(
-    params,
-    features,
-    targets,
-    activation: str,
-    weight_decay: float,
-    loss: str,
-    huber_delta: float,
-):
-    import jax.numpy as jnp
-
-    penalty = sum(jnp.sum(layer["weight"] ** 2) for layer in params)
-    return (
-        _regression_loss(params, features, targets, activation, loss, huber_delta)
-        + weight_decay * penalty
-    )
-
-
 def _init_adam_state(params):
     import jax
     import jax.numpy as jnp
@@ -258,7 +240,7 @@ def _clip_gradients(grads, max_norm: float):
     return jax.tree_util.tree_map(lambda grad: grad * scale, grads), norm
 
 
-def _adamw_update(params, grads, state, learning_rate: float):
+def _adamw_update(params, grads, state, learning_rate: float, weight_decay: float):
     import jax
     import jax.numpy as jnp
 
@@ -273,7 +255,9 @@ def _adamw_update(params, grads, state, learning_rate: float):
     m_hat = jax.tree_util.tree_map(lambda value: value / m_correction, m)
     v_hat = jax.tree_util.tree_map(lambda value: value / v_correction, v)
     params = jax.tree_util.tree_map(
-        lambda param, mh, vh: param - learning_rate * mh / (jnp.sqrt(vh) + epsilon),
+        lambda param, mh, vh: param
+        - learning_rate
+        * (mh / (jnp.sqrt(vh) + epsilon) + weight_decay * param),
         params,
         m_hat,
         v_hat,
@@ -295,17 +279,22 @@ def _train_step_impl(
 ):
     import jax
 
-    loss, grads = jax.value_and_grad(_loss_with_decay)(
+    loss, grads = jax.value_and_grad(_regression_loss)(
         params,
         features,
         targets,
         activation,
-        weight_decay,
         loss_name,
         huber_delta,
     )
     grads, grad_norm = _clip_gradients(grads, gradient_clip)
-    params, optimizer_state = _adamw_update(params, grads, optimizer_state, learning_rate)
+    params, optimizer_state = _adamw_update(
+        params,
+        grads,
+        optimizer_state,
+        learning_rate,
+        weight_decay,
+    )
     return params, optimizer_state, loss, grad_norm
 
 
