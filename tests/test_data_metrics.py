@@ -48,6 +48,23 @@ def test_make_numpy_batches_rejects_bad_shapes() -> None:
         make_numpy_batches(np.zeros((2, 2)), np.zeros(3), 2, np.random.default_rng(0))
 
 
+def test_make_numpy_batches_rejects_empty_or_non_finite_values() -> None:
+    with pytest.raises(ValueError, match="not be empty"):
+        make_numpy_batches(np.zeros((0, 2)), np.zeros(0), 2, np.random.default_rng(0))
+
+    features = np.zeros((2, 2), dtype=np.float32)
+    features[0, 0] = np.inf
+    with pytest.raises(ValueError, match="finite"):
+        make_numpy_batches(features, np.zeros(2), 2, np.random.default_rng(0))
+
+
+def test_standardizer_rejects_invalid_transform_shape() -> None:
+    standardizer = fit_standardizer(np.ones((3, 2), dtype=np.float32))
+
+    with pytest.raises(ValueError, match="2-D"):
+        standardizer.transform(np.ones(2))
+
+
 def test_regression_metrics_and_residuals() -> None:
     targets = np.array([1.0, 2.0, 3.0])
     predictions = np.array([1.0, 2.5, 2.0])

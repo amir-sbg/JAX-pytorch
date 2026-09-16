@@ -12,9 +12,11 @@ class Standardizer:
     scale: np.ndarray
 
     def transform(self, values: np.ndarray) -> np.ndarray:
+        values = _checked_matrix(values, self.mean.shape[0])
         return ((values - self.mean) / self.scale).astype(np.float32)
 
     def inverse(self, values: np.ndarray) -> np.ndarray:
+        values = _checked_matrix(values, self.mean.shape[0])
         return (values * self.scale + self.mean).astype(np.float32)
 
 
@@ -80,6 +82,10 @@ def fit_standardizer(values: np.ndarray) -> Standardizer:
     values = np.asarray(values, dtype=np.float32)
     if values.ndim != 2:
         raise ValueError("standardizer expects a 2-D array")
+    if values.shape[0] == 0:
+        raise ValueError("standardizer cannot fit an empty array")
+    if not np.isfinite(values).all():
+        raise ValueError("standardizer values must be finite")
     mean = values.mean(axis=0)
     scale = values.std(axis=0)
     scale = np.where(scale < 1e-8, 1.0, scale)
@@ -93,10 +99,18 @@ def make_numpy_batches(
     rng: np.random.Generator,
     shuffle: bool = True,
 ) -> list[tuple[np.ndarray, np.ndarray]]:
+    features = np.asarray(features, dtype=np.float32)
+    targets = np.asarray(targets, dtype=np.float32)
     if batch_size < 1:
         raise ValueError("batch_size must be positive")
+    if features.ndim != 2 or targets.ndim != 1:
+        raise ValueError("features must be 2-D and targets must be 1-D")
     if len(features) != len(targets):
         raise ValueError("features and targets must have matching rows")
+    if len(features) == 0:
+        raise ValueError("features and targets must not be empty")
+    if not np.isfinite(features).all() or not np.isfinite(targets).all():
+        raise ValueError("features and targets must contain only finite values")
     indices = np.arange(len(features))
     if shuffle:
         rng.shuffle(indices)
@@ -183,3 +197,12 @@ def _validate_split_sizes(validation_size: float, test_size: float) -> None:
         raise ValueError("validation_size and test_size must be between 0 and 1")
     if validation_size + test_size >= 1:
         raise ValueError("validation_size and test_size must sum to less than 1")
+
+
+def _checked_matrix(values: np.ndarray, width: int) -> np.ndarray:
+    values = np.asarray(values, dtype=np.float32)
+    if values.ndim != 2 or values.shape[1] != width:
+        raise ValueError(f"expected a 2-D array with {width} columns")
+    if not np.isfinite(values).all():
+        raise ValueError("standardizer values must be finite")
+    return values
