@@ -141,6 +141,11 @@ def train_torch(
 def predict_torch(model, features: np.ndarray, device) -> np.ndarray:
     import torch
 
+    features = np.asarray(features, dtype=np.float32)
+    if features.ndim != 2 or features.shape[0] == 0:
+        raise ValueError("features must be a non-empty 2-D array")
+    if not np.isfinite(features).all():
+        raise ValueError("features must contain only finite values")
     model.eval()
     with torch.inference_mode():
         tensor = torch.as_tensor(features, dtype=torch.float32, device=device)
@@ -168,6 +173,10 @@ def _make_loader(dataset: TabularDataset, config: TrainingConfig, torch):
 
     features = torch.as_tensor(dataset.x_train, dtype=torch.float32)
     targets = torch.as_tensor(dataset.y_train, dtype=torch.float32)
+    if features.shape[0] == 0:
+        raise ValueError("training data must not be empty")
+    if not torch.isfinite(features).all() or not torch.isfinite(targets).all():
+        raise ValueError("training data must contain only finite values")
     generator = torch.Generator().manual_seed(config.seed)
     return DataLoader(
         TensorDataset(features, targets),
@@ -199,4 +208,6 @@ def _resolve_device(device: str):
 
     if device == "auto":
         return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if device == "cuda" and not torch.cuda.is_available():
+        raise RuntimeError("CUDA was requested but is not available")
     return torch.device(device)
