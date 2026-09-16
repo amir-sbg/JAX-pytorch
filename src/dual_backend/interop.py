@@ -42,6 +42,10 @@ def numpy_mlp_forward(
     activation: str = "gelu",
 ) -> np.ndarray:
     values = np.asarray(features, dtype=np.float32)
+    if values.ndim != 2 or values.shape[0] == 0:
+        raise ValueError("features must be a non-empty 2-D array")
+    if not params:
+        raise ValueError("params must contain at least one layer")
     for layer in params[:-1]:
         values = values @ np.asarray(layer["weight"], dtype=np.float32) + np.asarray(
             layer["bias"],
@@ -64,6 +68,12 @@ def parity_report(
     right = np.asarray(right, dtype=np.float64)
     if left.shape != right.shape:
         raise ValueError("arrays must have matching shapes for parity")
+    if left.size == 0:
+        raise ValueError("parity arrays must not be empty")
+    if not np.isfinite(left).all() or not np.isfinite(right).all():
+        raise ValueError("parity arrays must contain only finite values")
+    if tolerance < 0:
+        raise ValueError("tolerance must not be negative")
     absolute = np.abs(left - right)
     return {
         "max_abs_diff": float(np.max(absolute)),

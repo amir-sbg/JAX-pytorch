@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from dual_backend.interop import (
     jax_params_to_torch_state,
@@ -55,3 +56,12 @@ def test_numpy_mlp_forward_and_parity_report() -> None:
 
     assert predictions.tolist() == [2.0]
     assert report["within_tolerance"]
+
+
+def test_parity_report_rejects_empty_non_finite_or_negative_tolerance() -> None:
+    with pytest.raises(ValueError, match="not be empty"):
+        parity_report(np.array([]), np.array([]))
+    with pytest.raises(ValueError, match="finite"):
+        parity_report(np.array([np.nan]), np.array([0.0]))
+    with pytest.raises(ValueError, match="tolerance"):
+        parity_report(np.array([0.0]), np.array([0.0]), tolerance=-1.0)
