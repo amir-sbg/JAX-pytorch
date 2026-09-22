@@ -174,6 +174,12 @@ def learning_curve_summary(history: list[dict[str, float]]) -> dict[str, float |
     for row in history:
         if "train_loss" not in row or "validation_loss" not in row:
             raise ValueError("history rows must include train_loss and validation_loss")
+    history_values = np.asarray(
+        [[row["train_loss"], row["validation_loss"]] for row in history],
+        dtype=float,
+    )
+    if not np.all(np.isfinite(history_values)):
+        raise ValueError("history losses must contain only finite values")
 
     first = history[0]
     last = history[-1]
@@ -214,6 +220,12 @@ def training_diagnostics(
     for row in history:
         if "train_loss" not in row or "validation_loss" not in row:
             raise ValueError("history rows must include train_loss and validation_loss")
+    history_values = np.asarray(
+        [[row["train_loss"], row["validation_loss"]] for row in history],
+        dtype=float,
+    )
+    if not np.all(np.isfinite(history_values)):
+        raise ValueError("history losses must contain only finite values")
 
     best_index, best = min(
         enumerate(history),

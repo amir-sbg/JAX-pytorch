@@ -148,6 +148,15 @@ def test_learning_curve_summary_rejects_missing_columns() -> None:
         learning_curve_summary([{"epoch": 1.0, "validation_loss": 0.2}])
 
 
+def test_learning_diagnostics_reject_non_finite_losses() -> None:
+    history = [{"train_loss": np.nan, "validation_loss": 0.2}]
+
+    with pytest.raises(ValueError, match="finite"):
+        learning_curve_summary(history)
+    with pytest.raises(ValueError, match="finite"):
+        training_diagnostics(history)
+
+
 def test_training_diagnostics_flags_validation_rebound() -> None:
     history = [
         {"epoch": 1.0, "train_loss": 1.0, "validation_loss": 1.2},
