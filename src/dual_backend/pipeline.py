@@ -11,6 +11,7 @@ from dual_backend.metrics import (
     learning_curve_summary,
     metric_delta,
     mlp_capacity_summary,
+    paired_rmse_bootstrap,
     prediction_agreement_summary,
     regression_metrics,
     residual_summary,
@@ -137,6 +138,11 @@ def _comparison_report(
             reports["jax"]["train_seconds"] - reports["torch"]["train_seconds"]
         ),
         "prediction_agreement": prediction_agreement_summary(
+            actual,
+            predictions_by_backend["torch"],
+            predictions_by_backend["jax"],
+        ),
+        "paired_rmse_bootstrap": paired_rmse_bootstrap(
             actual,
             predictions_by_backend["torch"],
             predictions_by_backend["jax"],

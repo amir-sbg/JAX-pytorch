@@ -8,6 +8,7 @@ from dual_backend.metrics import (
     learning_curve_summary,
     metric_delta,
     mlp_capacity_summary,
+    paired_rmse_bootstrap,
     prediction_agreement_summary,
     regression_metrics,
     residual_summary,
@@ -126,6 +127,26 @@ def test_prediction_agreement_summarizes_backend_differences() -> None:
     assert -1.0 <= report["prediction_correlation"] <= 1.0
     assert report["residual_sign_disagreement_rate"] == pytest.approx(2 / 3)
     assert report["first_backend_lower_error_rate"] > 0
+
+
+def test_paired_bootstrap_detects_better_backend() -> None:
+    targets = np.arange(1.0, 9.0)
+    first = targets + np.array([1.0, -1.0] * 4)
+    second = targets + np.array([0.1, -0.1] * 4)
+
+    report = paired_rmse_bootstrap(targets, first, second, samples=300, seed=7)
+
+    assert report["observed_rmse_delta_second_minus_first"] < 0.0
+    assert report["rmse_delta_ci_high"] < 0.0
+    assert report["probability_second_lower_rmse"] == 1.0
+
+
+def test_paired_bootstrap_validates_sampling_options() -> None:
+    values = np.array([1.0, 2.0])
+    with pytest.raises(ValueError, match="samples"):
+        paired_rmse_bootstrap(values, values, values, samples=0)
+    with pytest.raises(ValueError, match="confidence"):
+        paired_rmse_bootstrap(values, values, values, confidence=1.0)
 
 
 def test_learning_curve_summary_tracks_best_epoch_and_gap() -> None:

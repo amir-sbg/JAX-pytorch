@@ -158,6 +158,40 @@ def prediction_agreement_summary(
     }
 
 
+def paired_rmse_bootstrap(
+    targets: np.ndarray,
+    first_predictions: np.ndarray,
+    second_predictions: np.ndarray,
+    *,
+    samples: int = 1000,
+    confidence: float = 0.95,
+    seed: int = 42,
+) -> dict[str, float]:
+    actual, first = _matching_arrays(targets, first_predictions)
+    _, second = _matching_arrays(targets, second_predictions)
+    if first.shape != second.shape:
+        raise ValueError("prediction arrays must have the same shape")
+    if samples < 1:
+        raise ValueError("samples must be positive")
+    if not 0.0 < confidence < 1.0:
+        raise ValueError("confidence must be between 0 and 1")
+
+    rng = np.random.default_rng(seed)
+    indices = rng.integers(0, actual.size, size=(samples, actual.size))
+    actual_samples = actual[indices]
+    first_rmse = np.sqrt(np.mean((first[indices] - actual_samples) ** 2, axis=1))
+    second_rmse = np.sqrt(np.mean((second[indices] - actual_samples) ** 2, axis=1))
+    deltas = second_rmse - first_rmse
+    tail = (1.0 - confidence) / 2.0
+    observed_delta = regression_metrics(actual, second)["rmse"] - regression_metrics(actual, first)["rmse"]
+    return {
+        "observed_rmse_delta_second_minus_first": float(observed_delta),
+        "rmse_delta_ci_low": float(np.quantile(deltas, tail)),
+        "rmse_delta_ci_high": float(np.quantile(deltas, 1.0 - tail)),
+        "probability_second_lower_rmse": float(np.mean(deltas < 0.0)),
+    }
+
+
 def learning_curve_summary(history: list[dict[str, float]]) -> dict[str, float | int]:
     if not history:
         return {
