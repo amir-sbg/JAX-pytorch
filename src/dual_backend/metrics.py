@@ -303,6 +303,34 @@ def training_diagnostics(
     }
 
 
+def gradient_norm_summary(
+    history: list[dict[str, float]],
+    clip_threshold: float,
+) -> dict[str, float | int]:
+    if clip_threshold <= 0 or not np.isfinite(clip_threshold):
+        raise ValueError("clip_threshold must be positive and finite")
+    if not history:
+        return {
+            "epochs": 0,
+            "mean_gradient_norm": 0.0,
+            "max_gradient_norm": 0.0,
+            "p95_gradient_norm": 0.0,
+            "fraction_epochs_above_clip": 0.0,
+        }
+    if any("gradient_norm" not in row for row in history):
+        raise ValueError("history rows must include gradient_norm")
+    norms = np.asarray([row["gradient_norm"] for row in history], dtype=float)
+    if not np.all(np.isfinite(norms)) or np.any(norms < 0):
+        raise ValueError("gradient norms must be finite and non-negative")
+    return {
+        "epochs": len(history),
+        "mean_gradient_norm": float(np.mean(norms)),
+        "max_gradient_norm": float(np.max(norms)),
+        "p95_gradient_norm": float(np.percentile(norms, 95)),
+        "fraction_epochs_above_clip": float(np.mean(norms > clip_threshold)),
+    }
+
+
 def save_json(payload: dict, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, allow_nan=False) + "\n", encoding="utf-8")

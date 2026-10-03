@@ -18,6 +18,7 @@ The default experiment uses the scikit-learn diabetes regression dataset because
 - Backend-selection summary using test RMSE
 - Learning-curve summaries for convergence, best epoch, and final generalization gap
 - Training diagnostics for validation rebound and possible overfitting
+- Gradient-norm summaries that show how often either backend reaches the clipping threshold
 - PyTorch → JAX layout check: converts a PyTorch checkpoint into the JAX parameter layout and verifies numerical parity
 - CLI workflow for running experiments and writing reproducible reports
 

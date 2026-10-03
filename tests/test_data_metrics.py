@@ -5,6 +5,7 @@ from dual_backend.data import fit_standardizer, inverse_targets, make_numpy_batc
 from dual_backend.metrics import (
     error_by_prediction_quantile,
     error_by_target_quantile,
+    gradient_norm_summary,
     learning_curve_summary,
     metric_delta,
     mlp_capacity_summary,
@@ -204,3 +205,24 @@ def test_training_diagnostics_flags_validation_rebound() -> None:
     assert diagnostics["validation_rebound"] == pytest.approx(0.2)
     assert diagnostics["train_loss_drop_fraction"] == pytest.approx(0.5)
     assert diagnostics["overfit_flag"] is True
+
+
+def test_gradient_norm_summary_tracks_clipping_pressure() -> None:
+    history = [
+        {"gradient_norm": 0.5},
+        {"gradient_norm": 1.5},
+        {"gradient_norm": 2.0},
+    ]
+
+    summary = gradient_norm_summary(history, clip_threshold=1.0)
+
+    assert summary["epochs"] == 3
+    assert summary["max_gradient_norm"] == pytest.approx(2.0)
+    assert summary["fraction_epochs_above_clip"] == pytest.approx(2 / 3)
+
+
+def test_gradient_norm_summary_rejects_invalid_history() -> None:
+    with pytest.raises(ValueError, match="gradient_norm"):
+        gradient_norm_summary([{"train_loss": 1.0}], clip_threshold=1.0)
+    with pytest.raises(ValueError, match="non-negative"):
+        gradient_norm_summary([{"gradient_norm": -1.0}], clip_threshold=1.0)

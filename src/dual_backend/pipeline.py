@@ -7,6 +7,7 @@ from dual_backend.config import ExperimentConfig
 from dual_backend.data import TabularDataset, inverse_targets, load_tabular_dataset
 from dual_backend.metrics import (
     error_by_target_quantile,
+    gradient_norm_summary,
     error_by_prediction_quantile,
     learning_curve_summary,
     metric_delta,
@@ -62,7 +63,12 @@ def run_experiment(config: ExperimentConfig) -> dict:
         )
 
     backend_reports = {
-        result.backend: _result_report(dataset, result, config.report_dir)
+        result.backend: _result_report(
+            dataset,
+            result,
+            config.report_dir,
+            config.training.gradient_clip,
+        )
         for result in results
     }
     predictions_by_backend = {
@@ -96,6 +102,7 @@ def _result_report(
     dataset: TabularDataset,
     result: BackendResult,
     report_dir: Path,
+    gradient_clip: float,
 ) -> dict:
     actual = inverse_targets(dataset, dataset.y_test)
     predictions = inverse_targets(dataset, result.predictions_scaled)
@@ -119,6 +126,7 @@ def _result_report(
         "history_path": str(history_path),
         "learning_curve": learning_curve_summary(result.history),
         "training_diagnostics": training_diagnostics(result.history),
+        "gradient_diagnostics": gradient_norm_summary(result.history, gradient_clip),
         "extra": result.extra,
     }
 
