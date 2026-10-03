@@ -10,6 +10,7 @@ from dual_backend.metrics import (
     mlp_capacity_summary,
     paired_rmse_bootstrap,
     prediction_agreement_summary,
+    regression_calibration_summary,
     regression_metrics,
     residual_summary,
     training_diagnostics,
@@ -76,6 +77,17 @@ def test_regression_metrics_and_residuals() -> None:
     assert metrics["mae"] == pytest.approx(0.5)
     assert metrics["rmse"] == pytest.approx(np.sqrt((0.0 + 0.25 + 1.0) / 3.0))
     assert residuals["max_abs"] == 1.0
+
+
+def test_regression_calibration_recovers_linear_correction() -> None:
+    predictions = np.array([0.0, 1.0, 2.0, 3.0])
+    targets = 2.0 + 1.5 * predictions
+
+    report = regression_calibration_summary(targets, predictions)
+
+    assert report["intercept"] == pytest.approx(2.0)
+    assert report["slope"] == pytest.approx(1.5)
+    assert report["calibrated_rmse"] < 1e-12
 
 
 def test_error_by_target_quantile_tracks_bias_by_range() -> None:

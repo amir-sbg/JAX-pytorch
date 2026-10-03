@@ -13,6 +13,7 @@ from dual_backend.metrics import (
     mlp_capacity_summary,
     paired_rmse_bootstrap,
     prediction_agreement_summary,
+    regression_calibration_summary,
     regression_metrics,
     residual_summary,
     save_json,
@@ -104,6 +105,7 @@ def _result_report(
     _write_history(result.history, history_path)
     return {
         "metrics": metrics,
+        "calibration": regression_calibration_summary(actual, predictions),
         "residuals": residuals,
         "target_quantile_errors": error_by_target_quantile(actual, predictions),
         "prediction_quantile_errors": error_by_prediction_quantile(

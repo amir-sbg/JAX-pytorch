@@ -12,6 +12,7 @@ The default experiment uses the scikit-learn diabetes regression dataset because
 - Model-capacity accounting for trainable parameters and approximate per-sample linear ops
 - Backend comparison: consistent test metrics, residual summaries, prediction CSVs, training-history CSVs
 - Target-range and prediction-range error slices to check whether low/high targets or forecasts behave differently
+- Regression calibration slope, intercept, prediction bias, and post-calibration RMSE
 - Cross-backend agreement diagnostics for prediction gaps, correlations, and residual sign disagreements
 - Paired bootstrap confidence intervals for the JAX-minus-PyTorch RMSE difference
 - Backend-selection summary using test RMSE

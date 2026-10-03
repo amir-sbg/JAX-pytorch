@@ -55,6 +55,22 @@ def residual_summary(targets: np.ndarray, predictions: np.ndarray) -> dict[str, 
     }
 
 
+def regression_calibration_summary(
+    targets: np.ndarray,
+    predictions: np.ndarray,
+) -> dict[str, float]:
+    actual, estimated = _matching_arrays(targets, predictions)
+    design = np.column_stack([np.ones_like(estimated), estimated])
+    coefficients = np.linalg.lstsq(design, actual, rcond=None)[0]
+    calibrated = design @ coefficients
+    return {
+        "intercept": float(coefficients[0]),
+        "slope": float(coefficients[1]),
+        "mean_prediction_bias": float(np.mean(estimated - actual)),
+        "calibrated_rmse": float(np.sqrt(np.mean((calibrated - actual) ** 2))),
+    }
+
+
 def error_by_target_quantile(
     targets: np.ndarray,
     predictions: np.ndarray,
