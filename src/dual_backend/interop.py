@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from math import erf, sqrt
 
 import numpy as np
 
@@ -83,11 +84,35 @@ def parity_report(
     }
 
 
+def parameter_tree_parity_report(
+    left: tuple[dict[str, object], ...],
+    right: tuple[dict[str, object], ...],
+    tolerance: float = 1e-5,
+) -> dict[str, float | bool]:
+    left_flat = _flatten_parameter_tree(left)
+    right_flat = _flatten_parameter_tree(right)
+    report = parity_report(left_flat, right_flat, tolerance=tolerance)
+    denominator = max(float(np.linalg.norm(left_flat)), float(np.linalg.norm(right_flat)), 1e-12)
+    cosine_denominator = float(np.linalg.norm(left_flat) * np.linalg.norm(right_flat))
+    cosine_similarity = 1.0
+    if cosine_denominator > 0.0:
+        cosine_similarity = float(np.dot(left_flat, right_flat) / cosine_denominator)
+    report.update(
+        {
+            "relative_l2_error": float(np.linalg.norm(left_flat - right_flat) / denominator),
+            "cosine_similarity": cosine_similarity,
+            "parameters_compared": float(left_flat.size),
+        }
+    )
+    return report
+
+
 def _activation(values: np.ndarray, activation: str) -> np.ndarray:
     if activation == "relu":
         return np.maximum(values, 0.0)
     if activation == "gelu":
-        return 0.5 * values * (1.0 + np.tanh(np.sqrt(2.0 / np.pi) * (values + 0.044715 * values**3)))
+        error_function = np.vectorize(erf, otypes=[float])
+        return 0.5 * values * (1.0 + error_function(values / sqrt(2.0)))
     if activation == "tanh":
         return np.tanh(values)
     raise ValueError("unsupported activation")
@@ -97,6 +122,22 @@ def _to_numpy(value: object) -> np.ndarray:
     if hasattr(value, "detach"):
         value = value.detach().cpu().numpy()
     return np.asarray(value, dtype=np.float32)
+
+
+def _flatten_parameter_tree(params: tuple[dict[str, object], ...]) -> np.ndarray:
+    if not params:
+        raise ValueError("parameter tree must contain at least one layer")
+    flattened = []
+    for layer in params:
+        if set(layer) != {"weight", "bias"}:
+            raise ValueError("each parameter layer must contain weight and bias")
+        flattened.extend(
+            [
+                _to_numpy(layer["weight"]).reshape(-1),
+                _to_numpy(layer["bias"]).reshape(-1),
+            ]
+        )
+    return np.concatenate(flattened).astype(np.float64)
 
 
 def _layer_sort_key(key: str) -> tuple[int, str]:

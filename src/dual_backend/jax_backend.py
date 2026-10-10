@@ -40,7 +40,7 @@ def apply_jax(params, features, activation: str = "gelu"):
         if activation == "relu":
             activations = jnn.relu(activations)
         elif activation == "gelu":
-            activations = jnn.gelu(activations)
+            activations = jnn.gelu(activations, approximate=False)
         elif activation == "tanh":
             activations = jnp.tanh(activations)
         else:

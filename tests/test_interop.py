@@ -4,6 +4,7 @@ import pytest
 from dual_backend.interop import (
     jax_params_to_torch_state,
     numpy_mlp_forward,
+    parameter_tree_parity_report,
     parity_report,
     torch_state_to_jax_params,
 )
@@ -65,3 +66,19 @@ def test_parity_report_rejects_empty_non_finite_or_negative_tolerance() -> None:
         parity_report(np.array([np.nan]), np.array([0.0]))
     with pytest.raises(ValueError, match="tolerance"):
         parity_report(np.array([0.0]), np.array([0.0]), tolerance=-1.0)
+
+
+def test_parameter_tree_parity_reports_direction_and_scale() -> None:
+    left = (
+        {"weight": np.array([[1.0], [2.0]]), "bias": np.array([0.5])},
+    )
+    right = (
+        {"weight": np.array([[1.0], [2.01]]), "bias": np.array([0.5])},
+    )
+
+    report = parameter_tree_parity_report(left, right, tolerance=0.02)
+
+    assert report["within_tolerance"]
+    assert report["parameters_compared"] == 3
+    assert report["cosine_similarity"] > 0.999
+    assert report["relative_l2_error"] > 0.0

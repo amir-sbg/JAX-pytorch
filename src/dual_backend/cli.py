@@ -45,6 +45,7 @@ def main() -> None:
     parity.add_argument("--test-size", type=float, default=0.20)
     parity.add_argument("--seed", type=int, default=42)
     parity.add_argument("--tolerance", type=float, default=1e-5)
+    parity.add_argument("--gradient-batch-size", type=int, default=32)
     parity.add_argument("--output", type=Path, default=Path("reports/parity.json"))
     parity.add_argument("--device", default="auto")
 
@@ -67,6 +68,7 @@ def main() -> None:
             args.output,
             tolerance=args.tolerance,
             device=args.device,
+            gradient_batch_size=args.gradient_batch_size,
         )
         print(json.dumps(report, indent=2))
 
