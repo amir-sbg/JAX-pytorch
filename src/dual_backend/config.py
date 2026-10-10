@@ -24,6 +24,9 @@ class TrainingConfig:
     epochs: int = 100
     batch_size: int = 32
     learning_rate: float = 3e-3
+    learning_rate_schedule: str = "constant"
+    warmup_epochs: int = 0
+    min_learning_rate_ratio: float = 0.05
     weight_decay: float = 1e-4
     loss: str = "mse"
     huber_delta: float = 1.0
@@ -36,6 +39,12 @@ class TrainingConfig:
             raise ValueError("epochs and batch_size must be positive")
         if self.learning_rate <= 0:
             raise ValueError("learning_rate must be positive")
+        if self.learning_rate_schedule not in {"constant", "cosine"}:
+            raise ValueError("learning_rate_schedule must be constant or cosine")
+        if not 0 <= self.warmup_epochs < self.epochs:
+            raise ValueError("warmup_epochs must be between 0 and epochs - 1")
+        if not 0.0 <= self.min_learning_rate_ratio <= 1.0:
+            raise ValueError("min_learning_rate_ratio must be between 0 and 1")
         if self.weight_decay < 0:
             raise ValueError("weight_decay cannot be negative")
         if self.loss not in {"mse", "huber"}:
@@ -109,6 +118,15 @@ def experiment_config_from_dict(payload: dict) -> ExperimentConfig:
             epochs=int(training_payload.get("epochs", training_defaults.epochs)),
             batch_size=int(training_payload.get("batch_size", training_defaults.batch_size)),
             learning_rate=float(training_payload.get("learning_rate", training_defaults.learning_rate)),
+            learning_rate_schedule=training_payload.get(
+                "learning_rate_schedule", training_defaults.learning_rate_schedule
+            ),
+            warmup_epochs=int(training_payload.get("warmup_epochs", training_defaults.warmup_epochs)),
+            min_learning_rate_ratio=float(
+                training_payload.get(
+                    "min_learning_rate_ratio", training_defaults.min_learning_rate_ratio
+                )
+            ),
             weight_decay=float(training_payload.get("weight_decay", training_defaults.weight_decay)),
             loss=training_payload.get("loss", training_defaults.loss),
             huber_delta=float(training_payload.get("huber_delta", training_defaults.huber_delta)),

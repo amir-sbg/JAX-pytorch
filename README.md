@@ -9,6 +9,7 @@ The default experiment uses the scikit-learn diabetes regression dataset because
 - Shared preprocessing: train/validation/test split, feature scaling, target scaling, batch construction
 - PyTorch backend: `nn.Sequential` MLP, AdamW, MSE/Huber loss, gradient clipping, early stopping, checkpointing
 - JAX backend: explicit parameter PyTrees, JIT-compiled training step, hand-written Adam/Huber math, checkpointing to `.npz`
+- Shared constant or warmup-plus-cosine learning-rate schedules with per-epoch logging
 - Model-capacity accounting for trainable parameters and approximate per-sample linear ops
 - Backend comparison: consistent test metrics, residual summaries, prediction CSVs, training-history CSVs
 - Target-range and prediction-range error slices to check whether low/high targets or forecasts behave differently
@@ -59,6 +60,8 @@ python -m dual_backend.cli train \
   --epochs 100 \
   --batch-size 32 \
   --learning-rate 0.003 \
+  --learning-rate-schedule cosine \
+  --warmup-epochs 5 \
   --loss huber \
   --huber-delta 1.0
 ```

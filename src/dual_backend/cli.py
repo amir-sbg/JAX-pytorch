@@ -24,6 +24,9 @@ def main() -> None:
     train.add_argument("--epochs", type=int, default=100)
     train.add_argument("--batch-size", type=int, default=32)
     train.add_argument("--learning-rate", type=float, default=3e-3)
+    train.add_argument("--learning-rate-schedule", choices=["constant", "cosine"], default="constant")
+    train.add_argument("--warmup-epochs", type=int, default=0)
+    train.add_argument("--min-learning-rate-ratio", type=float, default=0.05)
     train.add_argument("--weight-decay", type=float, default=1e-4)
     train.add_argument("--loss", choices=["mse", "huber"], default="mse")
     train.add_argument("--huber-delta", type=float, default=1.0)
@@ -86,6 +89,9 @@ def _config_from_train_args(args: argparse.Namespace) -> ExperimentConfig:
             epochs=args.epochs,
             batch_size=args.batch_size,
             learning_rate=args.learning_rate,
+            learning_rate_schedule=args.learning_rate_schedule,
+            warmup_epochs=args.warmup_epochs,
+            min_learning_rate_ratio=args.min_learning_rate_ratio,
             weight_decay=args.weight_decay,
             loss=args.loss,
             huber_delta=args.huber_delta,

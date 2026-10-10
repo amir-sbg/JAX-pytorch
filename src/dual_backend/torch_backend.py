@@ -9,6 +9,7 @@ import numpy as np
 from dual_backend.config import ModelConfig, TrainingConfig
 from dual_backend.data import TabularDataset
 from dual_backend.results import BackendResult
+from dual_backend.schedules import learning_rate_for_epoch
 
 
 def _build_torch_model(input_dim: int, config: ModelConfig):
@@ -68,6 +69,16 @@ def train_torch(
     start_time = time.perf_counter()
 
     for epoch in range(1, training_config.epochs + 1):
+        epoch_learning_rate = learning_rate_for_epoch(
+            epoch,
+            training_config.epochs,
+            training_config.learning_rate,
+            training_config.learning_rate_schedule,
+            training_config.warmup_epochs,
+            training_config.min_learning_rate_ratio,
+        )
+        for parameter_group in optimizer.param_groups:
+            parameter_group["lr"] = epoch_learning_rate
         model.train()
         train_loss_sum = 0.0
         gradient_norms = []
@@ -93,6 +104,7 @@ def train_torch(
                 "train_loss": float(train_loss),
                 "validation_loss": float(validation_loss),
                 "gradient_norm": _mean_gradient_norm(gradient_norms),
+                "learning_rate": float(epoch_learning_rate),
             }
         )
 

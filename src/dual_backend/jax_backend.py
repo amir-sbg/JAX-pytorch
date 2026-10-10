@@ -8,6 +8,7 @@ import numpy as np
 from dual_backend.config import ModelConfig, TrainingConfig
 from dual_backend.data import TabularDataset, make_numpy_batches
 from dual_backend.results import BackendResult
+from dual_backend.schedules import learning_rate_for_epoch
 
 
 def init_jax_params(input_dim: int, config: ModelConfig, key):
@@ -79,6 +80,14 @@ def train_jax(
     start_time = time.perf_counter()
 
     for epoch in range(1, training_config.epochs + 1):
+        epoch_learning_rate = learning_rate_for_epoch(
+            epoch,
+            training_config.epochs,
+            training_config.learning_rate,
+            training_config.learning_rate_schedule,
+            training_config.warmup_epochs,
+            training_config.min_learning_rate_ratio,
+        )
         batches = make_numpy_batches(x_train, y_train, training_config.batch_size, rng, shuffle=True)
         batch_losses = []
         grad_norms = []
@@ -88,7 +97,7 @@ def train_jax(
                 optimizer_state,
                 jnp.asarray(features, dtype=jnp.float32),
                 jnp.asarray(targets, dtype=jnp.float32),
-                training_config.learning_rate,
+                epoch_learning_rate,
                 training_config.weight_decay,
                 training_config.gradient_clip,
                 model_config.activation,
@@ -114,6 +123,7 @@ def train_jax(
                 "train_loss": float(np.mean(batch_losses)),
                 "validation_loss": validation_loss,
                 "gradient_norm": float(np.mean(grad_norms)),
+                "learning_rate": float(epoch_learning_rate),
             }
         )
 
