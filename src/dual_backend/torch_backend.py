@@ -70,6 +70,7 @@ def train_torch(
     for epoch in range(1, training_config.epochs + 1):
         model.train()
         train_loss_sum = 0.0
+        gradient_norms = []
         seen = 0
         for features, targets in train_loader:
             features = features.to(resolved_device)
@@ -79,6 +80,7 @@ def train_torch(
             loss = loss_fn(predictions, targets)
             loss.backward()
             grad_norm = nn.utils.clip_grad_norm_(model.parameters(), training_config.gradient_clip)
+            gradient_norms.append(float(grad_norm))
             optimizer.step()
             train_loss_sum += float(loss.detach()) * len(features)
             seen += len(features)
@@ -90,7 +92,7 @@ def train_torch(
                 "epoch": float(epoch),
                 "train_loss": float(train_loss),
                 "validation_loss": float(validation_loss),
-                "gradient_norm": float(grad_norm),
+                "gradient_norm": _mean_gradient_norm(gradient_norms),
             }
         )
 
@@ -201,6 +203,12 @@ def _loss_function(nn, config: TrainingConfig):
     if config.loss == "huber":
         return nn.HuberLoss(delta=config.huber_delta)
     raise ValueError("loss must be mse or huber")
+
+
+def _mean_gradient_norm(values: list[float]) -> float:
+    if not values:
+        return 0.0
+    return float(np.mean(np.asarray(values, dtype=float)))
 
 
 def _resolve_device(device: str):
