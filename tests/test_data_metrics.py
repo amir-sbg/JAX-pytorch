@@ -76,7 +76,10 @@ def test_regression_metrics_and_residuals() -> None:
     residuals = residual_summary(targets, predictions)
 
     assert metrics["mae"] == pytest.approx(0.5)
+    assert metrics["median_absolute_error"] == pytest.approx(0.5)
+    assert metrics["p90_absolute_error"] == pytest.approx(0.9)
     assert metrics["rmse"] == pytest.approx(np.sqrt((0.0 + 0.25 + 1.0) / 3.0))
+    assert metrics["explained_variance"] <= 1.0
     assert residuals["max_abs"] == 1.0
 
 

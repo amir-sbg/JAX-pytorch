@@ -34,11 +34,22 @@ def regression_metrics(targets: np.ndarray, predictions: np.ndarray) -> dict[str
     r2 = 1.0 if variance == 0.0 and mse == 0.0 else 0.0
     if variance > 0.0:
         r2 = 1.0 - float(np.sum(residuals**2) / variance)
+    residual_variance = float(np.var(residuals))
+    target_variance = float(np.var(actual))
+    explained_variance = (
+        1.0 - residual_variance / target_variance
+        if target_variance > 0.0
+        else float(residual_variance == 0.0)
+    )
+    absolute_errors = np.abs(residuals)
     return {
-        "mae": float(np.mean(np.abs(residuals))),
+        "mae": float(np.mean(absolute_errors)),
+        "median_absolute_error": float(np.median(absolute_errors)),
+        "p90_absolute_error": float(np.quantile(absolute_errors, 0.90)),
         "mse": mse,
         "rmse": float(np.sqrt(mse)),
         "r2": r2,
+        "explained_variance": float(explained_variance),
     }
 
 
