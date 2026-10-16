@@ -16,6 +16,7 @@ The default experiment uses the scikit-learn diabetes regression dataset because
 - Regression calibration slope, intercept, prediction bias, and post-calibration RMSE
 - Cross-backend agreement diagnostics for prediction gaps, correlations, and residual sign disagreements
 - Paired bootstrap confidence intervals for the JAX-minus-PyTorch RMSE difference
+- Exact paired sign tests for how often each backend has lower per-example absolute error
 - Backend-selection summary using test RMSE
 - Learning-curve summaries for convergence, best epoch, and final generalization gap
 - Training diagnostics for validation rebound and possible overfitting

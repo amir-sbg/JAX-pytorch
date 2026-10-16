@@ -13,6 +13,7 @@ from dual_backend.metrics import (
     metric_delta,
     mlp_capacity_summary,
     paired_rmse_bootstrap,
+    paired_absolute_error_sign_test,
     prediction_agreement_summary,
     regression_calibration_summary,
     regression_metrics,
@@ -153,6 +154,11 @@ def _comparison_report(
             predictions_by_backend["jax"],
         ),
         "paired_rmse_bootstrap": paired_rmse_bootstrap(
+            actual,
+            predictions_by_backend["torch"],
+            predictions_by_backend["jax"],
+        ),
+        "paired_absolute_error_sign_test": paired_absolute_error_sign_test(
             actual,
             predictions_by_backend["torch"],
             predictions_by_backend["jax"],

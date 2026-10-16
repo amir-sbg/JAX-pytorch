@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 
 import numpy as np
@@ -216,6 +217,56 @@ def paired_rmse_bootstrap(
         "rmse_delta_ci_low": float(np.quantile(deltas, tail)),
         "rmse_delta_ci_high": float(np.quantile(deltas, 1.0 - tail)),
         "probability_second_lower_rmse": float(np.mean(deltas < 0.0)),
+    }
+
+
+def paired_absolute_error_sign_test(
+    targets: np.ndarray,
+    first_predictions: np.ndarray,
+    second_predictions: np.ndarray,
+    *,
+    tie_tolerance: float = 1e-12,
+) -> dict[str, float | int | str]:
+    """Compare per-example absolute errors with an exact paired sign test."""
+
+    if tie_tolerance < 0 or not np.isfinite(tie_tolerance):
+        raise ValueError("tie_tolerance must be finite and non-negative")
+    actual, first = _matching_arrays(targets, first_predictions)
+    _, second = _matching_arrays(targets, second_predictions)
+    if first.shape != second.shape:
+        raise ValueError("prediction arrays must have the same shape")
+
+    first_error = np.abs(first - actual)
+    second_error = np.abs(second - actual)
+    delta = second_error - first_error
+    first_wins = int(np.sum(delta > tie_tolerance))
+    second_wins = int(np.sum(delta < -tie_tolerance))
+    ties = int(len(delta) - first_wins - second_wins)
+    trials = first_wins + second_wins
+    if trials:
+        tail_count = min(first_wins, second_wins)
+        tail_probability = sum(
+            math.comb(trials, index) for index in range(tail_count + 1)
+        ) / (2**trials)
+        p_value = min(1.0, 2.0 * tail_probability)
+    else:
+        p_value = 1.0
+    winner = "tie"
+    if first_wins > second_wins:
+        winner = "first"
+    elif second_wins > first_wins:
+        winner = "second"
+    return {
+        "examples": int(len(delta)),
+        "first_lower_absolute_error": first_wins,
+        "second_lower_absolute_error": second_wins,
+        "ties": ties,
+        "first_win_rate_excluding_ties": float(first_wins / trials) if trials else 0.0,
+        "second_win_rate_excluding_ties": float(second_wins / trials) if trials else 0.0,
+        "mean_absolute_error_delta_second_minus_first": float(np.mean(delta)),
+        "median_absolute_error_delta_second_minus_first": float(np.median(delta)),
+        "two_sided_sign_test_p_value": float(p_value),
+        "winner_by_examples": winner,
     }
 
 

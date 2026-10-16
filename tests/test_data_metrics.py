@@ -10,6 +10,7 @@ from dual_backend.metrics import (
     metric_delta,
     mlp_capacity_summary,
     paired_rmse_bootstrap,
+    paired_absolute_error_sign_test,
     prediction_agreement_summary,
     regression_calibration_summary,
     regression_metrics,
@@ -163,6 +164,19 @@ def test_paired_bootstrap_validates_sampling_options() -> None:
         paired_rmse_bootstrap(values, values, values, samples=0)
     with pytest.raises(ValueError, match="confidence"):
         paired_rmse_bootstrap(values, values, values, confidence=1.0)
+
+
+def test_paired_sign_test_counts_backend_wins() -> None:
+    targets = np.arange(8.0)
+    first = targets + 1.0
+    second = targets + np.array([0.1] * 7 + [2.0])
+
+    report = paired_absolute_error_sign_test(targets, first, second)
+
+    assert report["second_lower_absolute_error"] == 7
+    assert report["first_lower_absolute_error"] == 1
+    assert report["winner_by_examples"] == "second"
+    assert report["two_sided_sign_test_p_value"] == pytest.approx(0.0703125)
 
 
 def test_learning_curve_summary_tracks_best_epoch_and_gap() -> None:
