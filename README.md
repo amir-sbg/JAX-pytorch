@@ -21,7 +21,7 @@ The default experiment uses the scikit-learn diabetes regression dataset because
 - Learning-curve summaries for convergence, best epoch, and final generalization gap
 - Training diagnostics for validation rebound and possible overfitting
 - Per-epoch gradient-norm summaries aggregated consistently across all batches in both backends
-- PyTorch → JAX parity check for converted predictions and per-parameter loss gradients
+- PyTorch → JAX parity checks for converted predictions, parameter gradients, and input gradients
 - CLI workflow for running experiments and writing reproducible reports
 
 ## Project layout
@@ -128,7 +128,7 @@ python -m dual_backend.cli parity \
 
 The parity command loads the PyTorch model, converts each linear layer into the JAX weight layout, runs the converted NumPy/JAX-style forward pass, and reports max/mean absolute prediction differences. This catches the common transpose bug when moving between PyTorch `(out, in)` linear weights and JAX `(in, out)` matrix multiplication.
 
-It also differentiates the same mini-batch loss in both frameworks and reports gradient cosine similarity, relative L2 error, and maximum absolute error. This catches subtler mismatches where forward values look close but optimization dynamics differ.
+It also differentiates the same mini-batch loss in both frameworks and compares both parameter gradients and `dLoss/dInput` using cosine similarity, relative L2 error, and maximum absolute error. This catches subtler mismatches where forward values look close but optimization or sensitivity behavior differs.
 
 ## Tests
 
