@@ -70,6 +70,16 @@ def check_torch_to_jax_layout(
             huber_delta=float(checkpoint_training.get("huber_delta", config.training.huber_delta)),
             tolerance=tolerance,
         ),
+        "hessian_vector_parity": _hessian_vector_parity(
+            model,
+            jax_layout_params,
+            dataset.x_train[:gradient_batch_size],
+            dataset.y_train[:gradient_batch_size],
+            activation=model_config.activation,
+            loss_name=str(checkpoint_training.get("loss", config.training.loss)),
+            huber_delta=float(checkpoint_training.get("huber_delta", config.training.huber_delta)),
+            tolerance=tolerance,
+        ),
         "activation_health": activation_health_report(
             jax_layout_params,
             dataset.x_test,
@@ -255,3 +265,69 @@ def _input_gradient_parity(
             direction=direction,
         ),
     }
+
+
+def _hessian_vector_parity(
+    model,
+    jax_layout_params,
+    features,
+    targets,
+    *,
+    activation: str,
+    loss_name: str,
+    huber_delta: float,
+    tolerance: float,
+) -> dict[str, float | bool]:
+    import jax
+    import jax.numpy as jnp
+    import torch
+
+    named_parameters = list(model.named_parameters())
+    device = next(model.parameters()).device
+    torch_features = torch.as_tensor(features, dtype=torch.float32, device=device)
+    torch_targets = torch.as_tensor(targets, dtype=torch.float32, device=device)
+    predictions = model(torch_features).squeeze(-1)
+    errors = predictions - torch_targets
+    if loss_name == "mse":
+        loss = torch.mean(errors**2)
+    elif loss_name == "huber":
+        absolute = torch.abs(errors)
+        quadratic = torch.minimum(absolute, torch.tensor(huber_delta, device=device))
+        loss = torch.mean(0.5 * quadratic**2 + huber_delta * (absolute - quadratic))
+    else:
+        raise ValueError("loss_name must be mse or huber")
+
+    parameter_count = sum(parameter.numel() for _, parameter in named_parameters)
+    scale = parameter_count**-0.5
+    directions = [torch.full_like(parameter, scale) for _, parameter in named_parameters]
+    gradients = torch.autograd.grad(loss, [parameter for _, parameter in named_parameters], create_graph=True)
+    directional_gradient = sum(torch.sum(gradient * direction) for gradient, direction in zip(gradients, directions))
+    torch_hvp = torch.autograd.grad(directional_gradient, [parameter for _, parameter in named_parameters])
+    torch_tree = torch_state_to_jax_params(
+        {name: value for (name, _), value in zip(named_parameters, torch_hvp)}
+    )
+    direction_tree = torch_state_to_jax_params(
+        {name: value for (name, _), value in zip(named_parameters, directions)}
+    )
+
+    jax_params = tuple(
+        {"weight": jnp.asarray(layer["weight"]), "bias": jnp.asarray(layer["bias"])}
+        for layer in jax_layout_params
+    )
+    jax_direction = tuple(
+        {"weight": jnp.asarray(layer["weight"]), "bias": jnp.asarray(layer["bias"])}
+        for layer in direction_tree
+    )
+    x = jnp.asarray(features, dtype=jnp.float32)
+    y = jnp.asarray(targets, dtype=jnp.float32)
+
+    def objective(params):
+        residuals = apply_jax(params, x, activation) - y
+        if loss_name == "mse":
+            return jnp.mean(residuals**2)
+        absolute = jnp.abs(residuals)
+        quadratic = jnp.minimum(absolute, huber_delta)
+        return jnp.mean(0.5 * quadratic**2 + huber_delta * (absolute - quadratic))
+
+    _, jax_hvp = jax.jvp(jax.grad(objective), (jax_params,), (jax_direction,))
+    return parameter_tree_parity_report(torch_tree, jax_hvp, tolerance=tolerance)

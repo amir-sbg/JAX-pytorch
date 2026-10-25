@@ -10,7 +10,7 @@ from dual_backend.interop import (
     parity_report,
     torch_state_to_jax_params,
 )
-from dual_backend.parity import _input_gradient_parity
+from dual_backend.parity import _hessian_vector_parity, _input_gradient_parity
 
 
 def test_torch_state_to_jax_params_transposes_linear_weights() -> None:
@@ -112,6 +112,30 @@ def test_input_gradient_parity_matches_torch_and_jax() -> None:
 
     assert report["within_tolerance"]
     assert report["cosine_similarity"] > 0.99999
+    assert report["relative_l2_error"] < 1e-5
+
+
+def test_hessian_vector_product_matches_torch_and_jax() -> None:
+    torch = pytest.importorskip("torch")
+    pytest.importorskip("jax")
+    model = torch.nn.Sequential(
+        torch.nn.Linear(2, 3),
+        torch.nn.Tanh(),
+        torch.nn.Linear(3, 1),
+    )
+    params = torch_state_to_jax_params(model.state_dict())
+    report = _hessian_vector_parity(
+        model,
+        params,
+        np.array([[0.2, -0.4], [0.7, 0.1]], dtype=np.float32),
+        np.array([0.3, -0.2], dtype=np.float32),
+        activation="tanh",
+        loss_name="mse",
+        huber_delta=1.0,
+        tolerance=1e-5,
+    )
+
+    assert report["within_tolerance"]
     assert report["relative_l2_error"] < 1e-5
 
 
