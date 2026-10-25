@@ -23,6 +23,7 @@ The default experiment uses the scikit-learn diabetes regression dataset because
 - Per-epoch gradient-norm summaries aggregated consistently across all batches in both backends
 - PyTorch → JAX parity checks for converted predictions, parameter gradients, and input gradients
 - Hidden-layer activation scale, sparsity, and tanh-saturation diagnostics
+- Central finite-difference checks for cross-backend input gradients
 - CLI workflow for running experiments and writing reproducible reports
 
 ## Project layout

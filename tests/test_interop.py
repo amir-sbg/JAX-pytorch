@@ -3,6 +3,7 @@ import pytest
 
 from dual_backend.interop import (
     activation_health_report,
+    directional_derivative_report,
     jax_params_to_torch_state,
     numpy_mlp_forward,
     parameter_tree_parity_report,
@@ -127,3 +128,16 @@ def test_activation_health_detects_relu_sparsity_and_tanh_saturation() -> None:
     assert relu["near_zero_fraction"] == pytest.approx(0.5)
     assert relu["saturated_fraction"] == 0.0
     assert tanh["saturated_fraction"] == 1.0
+
+
+def test_directional_derivative_matches_quadratic_gradient() -> None:
+    point = np.array([1.5, -2.0])
+    report = directional_derivative_report(
+        lambda value: float(np.sum(value**2)),
+        point,
+        2.0 * point,
+        direction=np.array([0.3, -0.7]),
+        epsilon=1e-5,
+    )
+
+    assert report["relative_error"] < 1e-8

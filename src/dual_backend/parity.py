@@ -6,6 +6,7 @@ from dual_backend.config import ExperimentConfig
 from dual_backend.data import load_tabular_dataset
 from dual_backend.interop import (
     activation_health_report,
+    directional_derivative_report,
     numpy_mlp_forward,
     parameter_tree_parity_report,
     parity_report,
@@ -224,6 +225,22 @@ def _input_gradient_parity(
         else 1.0
     )
     maximum_error = float(np.max(np.abs(difference)))
+    rng = np.random.default_rng(0)
+    direction = rng.normal(size=np.asarray(features).shape)
+
+    def numpy_loss(input_features: np.ndarray) -> float:
+        predictions = numpy_mlp_forward(
+            jax_layout_params,
+            input_features.astype(np.float32),
+            activation=activation,
+        )
+        errors = predictions.astype(np.float64) - np.asarray(targets, dtype=np.float64)
+        if loss_name == "mse":
+            return float(np.mean(errors**2))
+        absolute = np.abs(errors)
+        quadratic = np.minimum(absolute, huber_delta)
+        return float(np.mean(0.5 * quadratic**2 + huber_delta * (absolute - quadratic)))
+
     return {
         "values_compared": int(torch_gradient.size),
         "max_absolute_error": maximum_error,
@@ -231,4 +248,10 @@ def _input_gradient_parity(
         "relative_l2_error": float(np.linalg.norm(difference) / denominator),
         "cosine_similarity": cosine,
         "within_tolerance": maximum_error <= tolerance,
+        "finite_difference": directional_derivative_report(
+            numpy_loss,
+            np.asarray(features, dtype=np.float64),
+            torch_gradient.reshape(np.asarray(features).shape),
+            direction=direction,
+        ),
     }

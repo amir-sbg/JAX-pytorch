@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from collections.abc import Callable
 from math import erf, sqrt
 
 import numpy as np
@@ -141,6 +142,45 @@ def parameter_tree_parity_report(
         }
     )
     return report
+
+
+def directional_derivative_report(
+    objective: Callable[[np.ndarray], float],
+    point: np.ndarray,
+    gradient: np.ndarray,
+    *,
+    direction: np.ndarray | None = None,
+    epsilon: float = 1e-3,
+) -> dict[str, float]:
+    values = np.asarray(point, dtype=np.float64)
+    analytic_gradient = np.asarray(gradient, dtype=np.float64)
+    if values.shape != analytic_gradient.shape or values.size == 0:
+        raise ValueError("point and gradient must be non-empty arrays with matching shapes")
+    if epsilon <= 0 or not np.isfinite(epsilon):
+        raise ValueError("epsilon must be positive and finite")
+    if direction is None:
+        direction_values = np.ones_like(values)
+    else:
+        direction_values = np.asarray(direction, dtype=np.float64)
+    if direction_values.shape != values.shape or not np.isfinite(direction_values).all():
+        raise ValueError("direction must be finite and match the point shape")
+    norm = float(np.linalg.norm(direction_values))
+    if norm == 0.0:
+        raise ValueError("direction must have non-zero norm")
+    unit_direction = direction_values / norm
+    analytic = float(np.sum(analytic_gradient * unit_direction))
+    numerical = float(
+        (objective(values + epsilon * unit_direction) - objective(values - epsilon * unit_direction))
+        / (2.0 * epsilon)
+    )
+    absolute_error = abs(analytic - numerical)
+    return {
+        "analytic_directional_derivative": analytic,
+        "finite_difference_directional_derivative": numerical,
+        "absolute_error": absolute_error,
+        "relative_error": absolute_error / max(abs(analytic), abs(numerical), 1e-12),
+        "epsilon": float(epsilon),
+    }
 
 
 def _activation(values: np.ndarray, activation: str) -> np.ndarray:
