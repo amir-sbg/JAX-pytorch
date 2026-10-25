@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from dual_backend.interop import (
+    activation_health_report,
     jax_params_to_torch_state,
     numpy_mlp_forward,
     parameter_tree_parity_report,
@@ -111,3 +112,18 @@ def test_input_gradient_parity_matches_torch_and_jax() -> None:
     assert report["within_tolerance"]
     assert report["cosine_similarity"] > 0.99999
     assert report["relative_l2_error"] < 1e-5
+
+
+def test_activation_health_detects_relu_sparsity_and_tanh_saturation() -> None:
+    params = (
+        {"weight": np.array([[1.0, -1.0]]), "bias": np.array([0.0, 0.0])},
+        {"weight": np.ones((2, 1)), "bias": np.zeros(1)},
+    )
+    features = np.array([[2.0], [-2.0]], dtype=np.float32)
+
+    relu = activation_health_report(params, features, activation="relu")[0]
+    tanh = activation_health_report(params, features * 5.0, activation="tanh")[0]
+
+    assert relu["near_zero_fraction"] == pytest.approx(0.5)
+    assert relu["saturated_fraction"] == 0.0
+    assert tanh["saturated_fraction"] == 1.0

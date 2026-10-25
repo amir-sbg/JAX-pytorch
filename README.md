@@ -22,6 +22,7 @@ The default experiment uses the scikit-learn diabetes regression dataset because
 - Training diagnostics for validation rebound and possible overfitting
 - Per-epoch gradient-norm summaries aggregated consistently across all batches in both backends
 - PyTorch → JAX parity checks for converted predictions, parameter gradients, and input gradients
+- Hidden-layer activation scale, sparsity, and tanh-saturation diagnostics
 - CLI workflow for running experiments and writing reproducible reports
 
 ## Project layout

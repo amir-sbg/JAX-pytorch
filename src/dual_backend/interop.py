@@ -60,6 +60,42 @@ def numpy_mlp_forward(
     return output[:, 0].astype(np.float32)
 
 
+def activation_health_report(
+    params: tuple[dict[str, np.ndarray], ...],
+    features: np.ndarray,
+    activation: str = "gelu",
+) -> list[dict[str, float | int]]:
+    """Summarize hidden activation scale, sparsity, and saturation."""
+    values = np.asarray(features, dtype=np.float32)
+    if values.ndim != 2 or values.shape[0] == 0:
+        raise ValueError("features must be a non-empty 2-D array")
+    if not np.isfinite(values).all():
+        raise ValueError("features must contain only finite values")
+    if len(params) < 2:
+        return []
+
+    rows = []
+    for index, layer in enumerate(params[:-1]):
+        preactivation = values @ np.asarray(layer["weight"], dtype=np.float32) + np.asarray(
+            layer["bias"], dtype=np.float32
+        )
+        values = _activation(preactivation, activation).astype(np.float32)
+        rows.append(
+            {
+                "layer": index,
+                "width": int(values.shape[1]),
+                "preactivation_std": float(np.std(preactivation)),
+                "activation_mean": float(np.mean(values)),
+                "activation_std": float(np.std(values)),
+                "near_zero_fraction": float(np.mean(np.abs(values) <= 1e-6)),
+                "saturated_fraction": float(np.mean(np.abs(values) >= 0.99))
+                if activation == "tanh"
+                else 0.0,
+            }
+        )
+    return rows
+
+
 def parity_report(
     left: np.ndarray,
     right: np.ndarray,

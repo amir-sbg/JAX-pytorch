@@ -5,6 +5,7 @@ from pathlib import Path
 from dual_backend.config import ExperimentConfig
 from dual_backend.data import load_tabular_dataset
 from dual_backend.interop import (
+    activation_health_report,
     numpy_mlp_forward,
     parameter_tree_parity_report,
     parity_report,
@@ -67,6 +68,11 @@ def check_torch_to_jax_layout(
             loss_name=str(checkpoint_training.get("loss", config.training.loss)),
             huber_delta=float(checkpoint_training.get("huber_delta", config.training.huber_delta)),
             tolerance=tolerance,
+        ),
+        "activation_health": activation_health_report(
+            jax_layout_params,
+            dataset.x_test,
+            activation=model_config.activation,
         ),
     }
     save_json(report, output_path)
