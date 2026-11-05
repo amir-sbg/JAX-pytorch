@@ -3,6 +3,7 @@ import pytest
 
 from dual_backend.data import fit_standardizer, inverse_targets, make_numpy_batches
 from dual_backend.metrics import (
+    backend_gap_by_target_quantile,
     error_by_prediction_quantile,
     error_by_target_quantile,
     gradient_norm_summary,
@@ -144,6 +145,20 @@ def test_prediction_agreement_summarizes_backend_differences() -> None:
     assert -1.0 <= report["prediction_correlation"] <= 1.0
     assert report["residual_sign_disagreement_rate"] == pytest.approx(2 / 3)
     assert report["first_backend_lower_error_rate"] > 0
+    assert -1.0 <= report["concordance_correlation"] <= 1.0
+    assert report["mean_prediction_shift_second_minus_first"] == pytest.approx(0.2666667)
+
+
+def test_backend_gap_by_target_quantile_localizes_differences() -> None:
+    targets = np.arange(8.0)
+    first = targets.copy()
+    second = targets.copy()
+    second[4:] += 2.0
+
+    rows = backend_gap_by_target_quantile(targets, first, second, bins=2)
+
+    assert rows[0]["mean_absolute_prediction_gap"] == 0.0
+    assert rows[1]["mae_delta_second_minus_first"] == pytest.approx(2.0)
 
 
 def test_paired_bootstrap_detects_better_backend() -> None:

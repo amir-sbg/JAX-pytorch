@@ -6,6 +6,7 @@ from pathlib import Path
 from dual_backend.config import ExperimentConfig
 from dual_backend.data import TabularDataset, inverse_targets, load_tabular_dataset
 from dual_backend.metrics import (
+    backend_gap_by_target_quantile,
     error_by_target_quantile,
     gradient_norm_summary,
     error_by_prediction_quantile,
@@ -159,6 +160,11 @@ def _comparison_report(
             predictions_by_backend["jax"],
         ),
         "paired_absolute_error_sign_test": paired_absolute_error_sign_test(
+            actual,
+            predictions_by_backend["torch"],
+            predictions_by_backend["jax"],
+        ),
+        "target_quantile_backend_gap": backend_gap_by_target_quantile(
             actual,
             predictions_by_backend["torch"],
             predictions_by_backend["jax"],

@@ -173,17 +173,72 @@ def prediction_agreement_summary(
     abs_gap = np.abs(second - first)
     first_abs_error = np.abs(first_residuals)
     second_abs_error = np.abs(second_residuals)
+    mean_first = float(np.mean(first))
+    mean_second = float(np.mean(second))
+    variance_first = float(np.var(first))
+    variance_second = float(np.var(second))
+    covariance = float(np.mean((first - mean_first) * (second - mean_second)))
+    concordance_denominator = (
+        variance_first + variance_second + (mean_first - mean_second) ** 2
+    )
+    concordance = (
+        1.0 if concordance_denominator < 1e-12 and np.allclose(first, second)
+        else 2.0 * covariance / max(concordance_denominator, 1e-12)
+    )
     return {
         "mean_abs_prediction_gap": float(np.mean(abs_gap)),
         "max_abs_prediction_gap": float(np.max(abs_gap)),
         "prediction_correlation": _safe_correlation(first, second),
         "residual_correlation": _safe_correlation(first_residuals, second_residuals),
+        "concordance_correlation": float(concordance),
+        "mean_prediction_shift_second_minus_first": float(mean_second - mean_first),
         "residual_sign_disagreement_rate": float(
             np.mean(np.sign(first_residuals) != np.sign(second_residuals))
         ),
         "first_backend_lower_error_rate": float(np.mean(first_abs_error < second_abs_error)),
         "second_backend_lower_error_rate": float(np.mean(second_abs_error < first_abs_error)),
     }
+
+
+def backend_gap_by_target_quantile(
+    targets: np.ndarray,
+    first_predictions: np.ndarray,
+    second_predictions: np.ndarray,
+    bins: int = 4,
+) -> list[dict[str, float | int]]:
+    actual, first = _matching_arrays(targets, first_predictions)
+    _, second = _matching_arrays(targets, second_predictions)
+    if first.shape != second.shape:
+        raise ValueError("prediction arrays must have the same shape")
+    if bins < 2:
+        raise ValueError("bins must be at least 2")
+
+    edges = np.quantile(actual, np.linspace(0.0, 1.0, bins + 1))
+    rows = []
+    for index in range(bins):
+        upper_closed = index == bins - 1
+        mask = (actual >= edges[index]) & (
+            actual <= edges[index + 1] if upper_closed else actual < edges[index + 1]
+        )
+        if not np.any(mask):
+            continue
+        gap = second[mask] - first[mask]
+        first_error = np.abs(first[mask] - actual[mask])
+        second_error = np.abs(second[mask] - actual[mask])
+        rows.append(
+            {
+                "bin": index + 1,
+                "rows": int(mask.sum()),
+                "target_min": float(actual[mask].min()),
+                "target_max": float(actual[mask].max()),
+                "mean_prediction_gap_second_minus_first": float(gap.mean()),
+                "mean_absolute_prediction_gap": float(np.abs(gap).mean()),
+                "mae_delta_second_minus_first": float(
+                    second_error.mean() - first_error.mean()
+                ),
+            }
+        )
+    return rows
 
 
 def paired_rmse_bootstrap(
