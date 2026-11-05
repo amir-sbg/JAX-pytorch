@@ -15,6 +15,7 @@ from dual_backend.metrics import (
     mlp_capacity_summary,
     paired_rmse_bootstrap,
     paired_absolute_error_sign_test,
+    prediction_gap_bootstrap,
     prediction_agreement_summary,
     regression_calibration_summary,
     regression_metrics,
@@ -166,6 +167,10 @@ def _comparison_report(
         ),
         "target_quantile_backend_gap": backend_gap_by_target_quantile(
             actual,
+            predictions_by_backend["torch"],
+            predictions_by_backend["jax"],
+        ),
+        "prediction_shift_bootstrap": prediction_gap_bootstrap(
             predictions_by_backend["torch"],
             predictions_by_backend["jax"],
         ),

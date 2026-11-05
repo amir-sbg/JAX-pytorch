@@ -241,6 +241,32 @@ def backend_gap_by_target_quantile(
     return rows
 
 
+def prediction_gap_bootstrap(
+    first_predictions: np.ndarray,
+    second_predictions: np.ndarray,
+    *,
+    samples: int = 1000,
+    confidence: float = 0.95,
+    seed: int = 42,
+) -> dict[str, float | int]:
+    first, second = _matching_arrays(first_predictions, second_predictions)
+    if samples < 2:
+        raise ValueError("samples must be at least 2")
+    if not 0.0 < confidence < 1.0:
+        raise ValueError("confidence must be between 0 and 1")
+    rng = np.random.default_rng(seed)
+    indices = rng.integers(0, len(first), size=(samples, len(first)))
+    shifts = np.mean(second[indices] - first[indices], axis=1)
+    tail = (1.0 - confidence) / 2.0
+    return {
+        "samples": samples,
+        "mean_shift_second_minus_first": float(np.mean(second - first)),
+        "shift_ci_low": float(np.quantile(shifts, tail)),
+        "shift_ci_high": float(np.quantile(shifts, 1.0 - tail)),
+        "probability_positive_shift": float(np.mean(shifts > 0.0)),
+    }
+
+
 def paired_rmse_bootstrap(
     targets: np.ndarray,
     first_predictions: np.ndarray,

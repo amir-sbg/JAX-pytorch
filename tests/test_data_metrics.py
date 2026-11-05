@@ -13,6 +13,7 @@ from dual_backend.metrics import (
     paired_rmse_bootstrap,
     paired_absolute_error_sign_test,
     prediction_agreement_summary,
+    prediction_gap_bootstrap,
     regression_calibration_summary,
     regression_metrics,
     residual_summary,
@@ -159,6 +160,17 @@ def test_backend_gap_by_target_quantile_localizes_differences() -> None:
 
     assert rows[0]["mean_absolute_prediction_gap"] == 0.0
     assert rows[1]["mae_delta_second_minus_first"] == pytest.approx(2.0)
+
+
+def test_prediction_gap_bootstrap_detects_systematic_shift() -> None:
+    first = np.arange(12.0)
+    second = first + 0.5
+
+    report = prediction_gap_bootstrap(first, second, samples=200, seed=3)
+
+    assert report["mean_shift_second_minus_first"] == pytest.approx(0.5)
+    assert report["shift_ci_low"] == pytest.approx(0.5)
+    assert report["probability_positive_shift"] == 1.0
 
 
 def test_paired_bootstrap_detects_better_backend() -> None:
